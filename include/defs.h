@@ -2,13 +2,26 @@
 
 #include <unordered_map>
 #include <vector>
+#include <functional>
 
 typedef unsigned int uint;
 
 struct PairHash {
     template <typename T1, typename T2>
-    std::size_t operator()(const std::pair<T1, T2>& pair) const {
-        return std::hash<T1>()(pair.first) ^ (std::hash<T2>()(pair.second) << 1);
+    std::size_t operator () (const std::pair<T1, T2>& pair) const {
+        auto h1 = std::hash<T1>{}(pair.first);  // hash of the first element
+        auto h2 = std::hash<T2>{}(pair.second); // hash of the second element
+        return h1 ^ (h2 << 1); // Combine the two hashes
+    }
+};
+
+// Specializing std::hash for std::pair<unsigned int, unsigned int>
+template <>
+struct std::hash<std::pair<unsigned int, unsigned int>> {
+    std::size_t operator()(const std::pair<unsigned int, unsigned int>& key) const {
+        auto h1 = std::hash<unsigned int>{}(key.first);
+        auto h2 = std::hash<unsigned int>{}(key.second);
+        return h1 ^ (h2 << 1); // Combine the hashes
     }
 };
 
