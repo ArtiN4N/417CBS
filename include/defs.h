@@ -43,6 +43,4 @@ typedef std::unordered_map<AStarLocation, uint, PairHash> HeuristicTable;
 
 typedef std::unordered_map<AStarLocation, uint, PairHash> GoalWallTable;
 
-enum Direction { NORTH = 0, EAST, SOUTH, WEST, NONE };
-
 enum HeuristicType { DEFAULT = 0, CG, DG, WDG };

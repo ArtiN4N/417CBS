@@ -1,16 +1,20 @@
 #include "../include/cbs.h"
 
-AStarLocation move(AStarLocation location, Direction dir) {
+AStarLocation move(AStarLocation location, uint dir) {
     AStarLocation ret = location;
     switch (dir) {
-        case NORTH:
+        case 0:
             ret.second--;
-        case EAST:
+            break;
+        case 1:
             ret.first++;
-        case SOUTH:
+            break;
+        case 2:
             ret.second++;
-        case WEST:
+            break;
+        case 3:
             ret.first--;
+            break;
         default:
             break;
     }
@@ -49,7 +53,7 @@ HeuristicTable computeDefaultHeuristic(AStarLocation goal, Map map) {
 
         for (int i = 0; i < 4; i++) {
             // cast int to ordered enum
-            Direction dir = (Direction) i;
+            uint dir = i;
 
             AStarLocation childLocation = move(curr.location, dir);
             uint childCost = curr.cost + 1;
@@ -120,9 +124,9 @@ AStarLocation getLocation(AStarPath path, uint timestep) {
     else return path[-1];
 }
 
-AStarPath getPath(AStarNode goalNode) {
+AStarPath getPath(AStarNode* goalNode) {
     AStarPath path;
-    AStarNode* curr = &goalNode;
+    AStarNode* curr = goalNode;
 
     while (curr != nullptr) {
         path.push_back(curr->location);
@@ -134,7 +138,7 @@ AStarPath getPath(AStarNode goalNode) {
 }
 
 bool isConstrained(AStarLocation currentLoc, AStarLocation nextLoc, uint nextTime, ConstraintTable cTable) {
-    if (cTable.find(nextTime) != cTable.end()) return false;
+    if (cTable.find(nextTime) == cTable.end()) return false;
 
     for (auto& constraint : cTable[nextTime]) {
         if (!constraint.isEdgeCollision) {
@@ -229,12 +233,12 @@ AStarPath aStar(
 ) {
 
     struct CompareANode {
-        bool operator()(const AStarNode& a, const AStarNode& b) {
-            return a.gval + a.hval > b.gval + b.hval;
+        bool operator()(const AStarNode* a, const AStarNode* b) {
+            return a->gval + a->hval > b->gval + b->hval;
         }
     };
 
-    std::priority_queue<int, std::vector<AStarNode>, CompareANode> openList;
+    std::priority_queue<int, std::vector<AStarNode*>, CompareANode> openList;
     std::unordered_map<std::pair<AStarLocation, uint>, AStarNode, PairHash> closedList;
 
     GoalWallTable goalWalls;
@@ -269,36 +273,39 @@ AStarPath aStar(
     }
 
     AStarNode root = { startLoc, 0, hValue, nullptr, 0 };
-    openList.push(root);
     closedList[std::make_pair(startLoc, 0)] = root;
+    AStarNode* nodePtr = &closedList[std::make_pair(startLoc, 0)];
+    openList.push(nodePtr);
 
-    AStarNode curr;
-
-    while (openList.size() < 0) {
-        curr = openList.top();
+    while (openList.size() > 0) {
+        AStarNode* curr = openList.top();
         openList.pop();
 
-        if (curr.location == goalLoc && curr.timeStep >= maxTimestep)
+        if (curr->location == goalLoc && curr->timeStep >= maxTimestep)
             return getPath(curr);
         
         for (int i = 0; i < 5; i++) {
             // cast int to ordered enum
-            Direction dir = (Direction) i;
+            uint dir = i;
+
+            bool wrongNorth = dir == 0 && curr->location.second == 0;
+            bool wrongEast = dir == 1 && curr->location.first == map.cols - 1;
+            bool wrongSouth = dir == 2 && curr->location.second == map.rows - 1;
+            bool wrongWest = dir == 3 && curr->location.first == 0;
+
+            if (wrongNorth || wrongEast || wrongSouth || wrongWest) continue;
 
             AStarLocation childLoc;
 
-            if (i == 4) childLoc = curr.location;
-            else childLoc = move(curr.location, dir);
+            if (i == 4) childLoc = curr->location;
+            else childLoc = move(curr->location, dir);
 
-            uint childTime = curr.timeStep + 1;
+            uint childTime = curr->timeStep + 1;
 
             if (childTime > terminateTimestep) continue;
 
-            if (isConstrained(curr.location, childLoc, childTime, cTable)) continue;
+            if (isConstrained(curr->location, childLoc, childTime, cTable)) continue;
 
-            bool xBound = childLoc.first < 0 || childLoc.first >= map.cols;
-            bool yBound = childLoc.second < 0 || childLoc.second >= map.rows;
-            if (xBound || yBound) continue;
             if (map.tiles[childLoc.first][childLoc.second]) continue;
 
             if (goalWalls.find(childLoc) != goalWalls.end())
@@ -307,8 +314,8 @@ AStarPath aStar(
 
             AStarNode child = {
                 childLoc,
-                curr.gval + 1, hTable[childLoc],
-                &curr,
+                curr->gval + 1, hTable[childLoc],
+                curr,
                 childTime
             };
 
@@ -316,11 +323,13 @@ AStarPath aStar(
                 AStarNode existingNode = closedList[std::make_pair(childLoc, childTime)];
                 if (compareAStarNodes(child, existingNode)) {
                     closedList[std::make_pair(childLoc, childTime)] = child;
-                    openList.push(child);
+                    AStarNode* nodePtr = &closedList[std::make_pair(childLoc, childTime)];
+                    openList.push(nodePtr);
                 }
             } else {
                 closedList[std::make_pair(childLoc, childTime)] = child;
-                openList.push(child);
+                AStarNode* nodePtr = &closedList[std::make_pair(childLoc, childTime)];
+                openList.push(nodePtr);
             }
         }
     }
@@ -348,6 +357,12 @@ void printResults(std::vector<AStarPath> paths, uint nExpanded, uint nGenerated,
     std::cout << "Sum of costs : " << getSumOfCost(paths) << std::endl;
     std::cout << "Expanded nodes : " << nExpanded << std::endl;
     std::cout << "Generated nodes : " << nGenerated << std::endl;
+}
+
+void printAStarPath(AStarPath path) {
+    uint ret = 0;
+    for (auto loc : path) std::cout << "(" << loc.second << "," << loc.first << ")->";
+    std::cout << std::endl;
 }
 
 std::vector<AStarPath> findSolution(Map map, HeuristicType type) {
@@ -386,7 +401,6 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type) {
             std::cerr << "No solutions!" << std::endl;
             return {};
         }
-
         root.paths.push_back(path);
     }
 
@@ -394,6 +408,7 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type) {
     root.collisions = detectCollisions(root.paths);
 
     openList.push(root);
+    nGenerated++;
 
     for (auto& collision : root.collisions) {
         std::pair<Constraint, Constraint> c = standardSplitting(collision);
@@ -409,9 +424,10 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type) {
     uint maxPathLength = map.cols * map.rows * 10;
 
     while (openList.size() > 0) {
-        std::cout << "############ EXPANDING NODE ############" << std::endl;
+        std::cout << "\n############ EXPANDING NODE ############" << std::endl;
         CBSNode curr = openList.top();
         openList.pop();
+        nExpanded++;
 
         if (curr.collisions.size() == 0) {
             auto end = std::chrono::high_resolution_clock::now();
@@ -428,7 +444,7 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type) {
         for (auto constraint : {constraints.first, constraints.second}) {
             if (std::find(curr.constraints.begin(), curr.constraints.end(), constraint) != curr.constraints.end())
                 continue;
-            
+
             CBSNode qNode = {
                 0,
                 curr.constraints,
@@ -436,6 +452,7 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type) {
                 curr.collisions,
             };
             qNode.constraints.push_back(constraint);
+
 
             uint agentId = constraint.agentId;
             AStarPath path = aStar(
@@ -451,6 +468,7 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type) {
                 if (qNode.cost >= maxPathLength) continue;
 
                 openList.push(qNode);
+                nGenerated++;
             }
         }
     }
