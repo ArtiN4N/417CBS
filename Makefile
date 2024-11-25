@@ -29,3 +29,6 @@ wdg_test:
 
 vis_test:
 	$(CC) $(VIS_TEST_SRC) $(VIS_TEST_EXE) $(VIS_TEST_FLAG) $(INC) $(VIS_TEST_LIB)
+
+clean:
+	rm -f bin/*
