@@ -26,16 +26,16 @@ void drawMap(Map map) {
 
         Agent actor = map.agents[a];
 
-        uint x = actor.goalx;
-        uint y = actor.goaly;
+        uint x = actor.goal.first;
+        uint y = actor.goal.second;
 
         uint margin = 10;
 
         draw.a = 150;
         DrawRectangle(x * tileSize + margin / 2, y * tileSize + margin / 2, tileSize - margin, tileSize - margin, draw);
 
-        x = actor.currx;
-        y = actor.curry;
+        x = actor.curr.first;
+        y = actor.curr.second;
         uint radius = tileSize / 2;
         margin = 2;
         draw.a = 255;

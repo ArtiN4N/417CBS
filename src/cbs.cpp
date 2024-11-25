@@ -19,7 +19,7 @@ AStarLocation move(AStarLocation location, Direction dir) {
 
 uint getSumOfCost(std::vector<AStarPath> paths) {
     uint ret = 0;
-    for (auto path : paths) ret += path.size() - 1;
+    for (auto& path : paths) ret += path.size() - 1;
     return ret;
 }
 
@@ -74,7 +74,7 @@ HeuristicTable computeDefaultHeuristic(AStarLocation goal, Map map) {
     }
 
     HeuristicTable hTable;
-    for (auto pair : closedList) {
+    for (auto& pair : closedList) {
         hTable[pair.first] = pair.second.cost;
     }
 
@@ -83,10 +83,10 @@ HeuristicTable computeDefaultHeuristic(AStarLocation goal, Map map) {
 
 HeuristicTable computeHeuristics(HeuristicType type, AStarLocation goal, Map map) {
     switch (type) {
+        case CG:
+            //return computeCGHeuristic(goal, map);
         case DEFAULT:
             return computeDefaultHeuristic(goal, map);
-        case CG:
-            return computeCGHeuristic(goal, map);
         case DG:
             return computeDGHeuristic(goal, map);
         case WDG:
@@ -96,7 +96,7 @@ HeuristicTable computeHeuristics(HeuristicType type, AStarLocation goal, Map map
 
 ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable goalWalls) {
     ConstraintTable table;
-    for (auto constraint : constraints) {
+    for (auto& constraint : constraints) {
         if (agent != constraint.agentId) continue;
 
         uint cTimestep = constraint.timeStep;
@@ -132,7 +132,7 @@ AStarPath getPath(AStarNode goalNode) {
 bool isConstrained(AStarLocation currentLoc, AStarLocation nextLoc, uint nextTime, ConstraintTable cTable) {
     if (cTable.find(nextTime) != cTable.end()) return false;
 
-    for (auto constraint : cTable[nextTime]) {
+    for (auto& constraint : cTable[nextTime]) {
         if (!constraint.isEdgeCollision) {
             if (nextLoc == constraint.l1) return true;
         } else {
@@ -220,7 +220,7 @@ bool compareAStarNodes(AStarNode n1, AStarNode n2) {
 } 
 
 AStarPath aStar(
-    Map map,AStarLocation startLoc, AStarLocation goalLoc,
+    Map map, AStarLocation startLoc, AStarLocation goalLoc,
     HeuristicTable hTable, uint agent, std::vector<Constraint> constraints
 ) {
 
@@ -240,13 +240,13 @@ AStarPath aStar(
     ConstraintTable cTable = buildConstraintTable(constraints, agent, goalWalls);
     uint maxTimestep = 0;
 
-    for (auto pair : cTable) {
+    for (auto& pair : cTable) {
         uint timeStep = pair.first;
         auto constraints = pair.second;
 
-        for (auto constraint : constraints) {
-            bool isVertex = !constraint.location.isEdgeCollision;
-            bool constraintAtGoal = constraint.location.l1 == goalLoc;
+        for (auto& constraint : constraints) {
+            bool isVertex = !constraint.isEdgeCollision;
+            bool constraintAtGoal = constraint.l1 == goalLoc;
             if (isVertex && constraintAtGoal)
                 if (timeStep > maxTimestep)
                     maxTimestep = timeStep;
@@ -317,6 +317,131 @@ AStarPath aStar(
             } else {
                 closedList[std::make_pair(childLoc, childTime)] = child;
                 openList.push(child);
+            }
+        }
+    }
+
+    return {};
+}
+
+void printCollisionLocation(CollisionLocation l) {
+    std::cout << "[ (" << l.l1.first << "," << l.l1.second << ")";
+    if (l.isEdgeCollision) {
+        std::cout << ", (" << l.l2.first << "," << l.l2.second << ")";
+    }
+    std::cout << " ]";
+}
+
+void printConstraint(Constraint c) {
+    std::cout << " id=" << c.agentId << " time=" << c.timeStep << " location=";
+    printCollisionLocation(c.location);
+    std::cout << std::endl;
+}
+
+void printResults(std::vector<AStarPath> paths, uint nExpanded, uint nGenerated, double elapsed) {
+    std::cout << "Found a solution!" << std::endl;
+    std::cout << "Time elapsed : " << elapsed << std::endl;
+    std::cout << "Sum of costs : " << getSumOfCost(paths) << std::endl;
+    std::cout << "Expanded nodes : " << nExpanded << std::endl;
+    std::cout << "Generated nodes : " << nGenerated << std::endl;
+}
+
+std::vector<AStarPath> findSolution(Map map, std::vector<HeuristicTable> heuristics) {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    uint nGenerated = 0;
+    uint nExpanded = 0;
+
+    struct CBSNode {
+        uint cost;
+        std::vector<Constraint> constraints;
+        std::vector<AStarPath> paths;
+        std::vector<Collision> collisions;
+    };
+
+    struct CompareCBSNode {
+        bool operator()(const CBSNode& a, const CBSNode& b) {
+            return a.cost > b.cost;
+        }
+    };
+
+    std::priority_queue<int, std::vector<CBSNode>, CompareCBSNode> openList;
+
+    CBSNode root = {
+        0, {}, {}, {}
+    };
+
+    for (int a = 0; a < map.nAgents; a++) {
+        AStarPath path = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, root.constraints);
+        if (path.size() == 0) {
+            std::cerr << "No solutions!" << std::endl;
+            return {};
+        }
+
+        root.paths.push_back(path);
+    }
+
+    root.cost = getSumOfCost(root.paths);
+    root.collisions = detectCollisions(root.paths);
+
+    openList.push(root);
+
+    for (auto& collision : root.collisions) {
+        std::pair<Constraint, Constraint> c = standardSplitting(collision);
+        Constraint c1 = c.first;
+        Constraint c2 = c.second;
+
+        std::cout << "First constraint: ";
+        printConstraint(c1);
+        std::cout << "Second constraint: ";
+        printConstraint(c2);
+    }
+
+    uint maxPathLength = map.cols * map.rows * 10;
+
+    while (openList.size() > 0) {
+        std::cout << "############ EXPANDING NODE ############" << std::endl;
+        CBSNode curr = openList.top();
+        openList.pop();
+
+        if (curr.collisions.size() == 0) {
+            auto end = std::chrono::high_resolution_clock::now();
+            auto secs = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
+            printResults(curr.paths, nExpanded, nGenerated, secs);
+            
+            return curr.paths;
+        }
+
+        Collision currCollision = curr.collisions[0];
+
+        std::pair<Constraint, Constraint> constraints = standardSplitting(currCollision);
+
+        for (auto constraint : {constraints.first, constraints.second}) {
+            if (std::find(curr.constraints.begin(), curr.constraints.end(), constraint) != curr.constraints.end())
+                continue;
+            
+            CBSNode qNode = {
+                0,
+                curr.constraints,
+                curr.paths,
+                curr.collisions,
+            };
+            qNode.constraints.push_back(constraint);
+
+            uint agentId = constraint.agentId;
+            AStarPath path = aStar(
+                map, map.starts[agentId], map.goals[agentId],
+                heuristics[agentId], agentId, qNode.constraints
+            );
+
+            if (path.size() > 0) {
+                qNode.paths[agentId] = path;
+                qNode.collisions = detectCollisions(qNode.paths);
+                qNode.cost = getSumOfCost(qNode.paths);
+
+                if (qNode.cost >= maxPathLength) continue;
+
+                openList.push(qNode);
             }
         }
     }

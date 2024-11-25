@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <queue>
+#include <chrono>
 
 #include "defs.h"
 
@@ -40,3 +41,7 @@ struct AStarNode {
 
     uint timeStep;
 };
+
+std::vector<AStarPath> findSolution(Map map, std::vector<HeuristicTable> heuristics);
+
+HeuristicTable computeHeuristics(HeuristicType type, AStarLocation goal, Map map);

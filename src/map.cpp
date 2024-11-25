@@ -31,8 +31,8 @@ void Map::loadFromFile(std::string path) {
     file >> nAgents;
 
     agents = new Agent[nAgents];
-    starts = new std::pair<uint, uint>[nAgents];
-    goals = new std::pair<uint, uint>[nAgents];
+    starts = new AStarLocation[nAgents];
+    goals = new AStarLocation[nAgents];
 
     for (int a = 0; a < nAgents; a++) {
         uint start_x, start_y, goal_x, goal_y;

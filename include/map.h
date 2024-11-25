@@ -7,16 +7,13 @@
 #include <iostream>
 
 struct Agent {
-    uint startx;
-    uint starty;
-    uint goalx;
-    uint goaly;
+    AStarLocation start;
+    AStarLocation goal;
 
-    uint currx;
-    uint curry;
+    AStarLocation curr;
 
-    Agent() : startx(0), starty(0), goalx(0), goaly(0), currx(0), curry(0) {}
-    Agent(uint sx, uint sy, uint gx, uint gy) : startx(sx), starty(sy), goalx(gx), goaly(gy), currx(sx), curry(sy) {}
+    Agent() : start(std::make_pair(0, 0)), goal(std::make_pair(0, 0)), curr(std::make_pair(0, 0)) {}
+    Agent(uint sx, uint sy, uint gx, uint gy) : start(std::make_pair(sx, sy)), goal(std::make_pair(gx, gy)), curr(std::make_pair(sx, sy)) {}
 };
 
 struct Map {
@@ -27,8 +24,8 @@ struct Map {
     uint nAgents;
     Agent* agents;
 
-    std::pair<uint, uint>* starts;
-    std::pair<uint, uint>* goals;
+    AStarLocation* starts;
+    AStarLocation* goals;
 
     bool loaded;
 
