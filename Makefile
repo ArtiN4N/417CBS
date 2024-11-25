@@ -1,6 +1,6 @@
 CC = g++
 INC = -I include/
-SRC = src/map.cpp
+SRC = src/map.cpp src/cbs.cpp
 
 VIS_TEST_SRC = src/visualizer/vis_load.cpp src/visualizer/vis.cpp
 VIS_TEST_EXE = -o bin/vis_test.exe
