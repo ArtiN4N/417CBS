@@ -26,19 +26,23 @@ void drawMap(Map map) {
 
         Agent actor = map.agents[a];
 
-        uint x = actor.currx;
-        uint y = actor.curry;
-        uint radius = tileSize / 2;
-        uint margin = 2;
-        DrawCircle(x * tileSize + radius + margin / 2, y * tileSize + radius + margin / 2, radius - margin, draw);
+        uint x = actor.goalx;
+        uint y = actor.goaly;
 
-        x = actor.goalx;
-        y = actor.goaly;
-
-        margin = 10;
+        uint margin = 10;
 
         draw.a = 150;
         DrawRectangle(x * tileSize + margin / 2, y * tileSize + margin / 2, tileSize - margin, tileSize - margin, draw);
+
+        x = actor.currx;
+        y = actor.curry;
+        uint radius = tileSize / 2;
+        margin = 2;
+        draw.a = 255;
+
+        DrawCircle(x * tileSize + radius + margin / 2, y * tileSize + radius + margin / 2, radius - margin, draw);
+
+        DrawText(TextFormat("%d", a), x * tileSize + radius + margin / 2 - 4, y * tileSize + radius + margin / 2 - 8, 20, BLACK);
     }
 }
 
