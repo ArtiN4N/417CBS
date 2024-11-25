@@ -3,7 +3,7 @@
 #include <iostream>
 
 int main() {
-    std::cout << "hello world" << std::endl;
+    std::cout << "hello vis test" << std::endl;
 
     InitWindow(800, 800, "Visualization test");
 
