@@ -6,10 +6,10 @@
 
 #include "defs.h"
 
+#include "map.h"
 #include "cg.h"
 #include "dg.h"
 #include "wdg.h"
-#include "map.h"
 
 struct Collision {
     uint agentId;
