@@ -9,7 +9,7 @@ VIS_TEST_FLAG = -O3
 
 NON_VIS_FLAG = -std=c++14 -O3 -pthread
 
-TEST_SRC = src/cg/cg_load.cpp
+CG_SRC = src/cg/cg_load.cpp
 CG_EXE = -o bin/cg_test
 
 DG_SRC = src/dg/dg_load.cpp
