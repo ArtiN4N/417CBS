@@ -12,12 +12,7 @@ int main() {
 
     map.printTiles();
 
-    std::vector<HeuristicTable> heuristics;
-    for (int a = 0; a < map.nAgents; a++) {
-        heuristics.push_back(computeHeuristics(type, map.agents[a].goal, map));
-    }
-
-    std::vector<AStarPath> soln = findSolution(map, heuristics);
+    std::vector<AStarPath> soln = findSolution(map, type);
 
     map.destroy();
     return 0;

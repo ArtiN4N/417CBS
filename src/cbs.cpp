@@ -346,7 +346,12 @@ void printResults(std::vector<AStarPath> paths, uint nExpanded, uint nGenerated,
     std::cout << "Generated nodes : " << nGenerated << std::endl;
 }
 
-std::vector<AStarPath> findSolution(Map map, std::vector<HeuristicTable> heuristics) {
+std::vector<AStarPath> findSolution(Map map, HeuristicType type) {
+    std::vector<HeuristicTable> heuristics;
+    for (int a = 0; a < map.nAgents; a++) {
+        heuristics.push_back(computeHeuristics(type, map.agents[a].goal, map));
+    }
+
     auto start = std::chrono::high_resolution_clock::now();
 
     uint nGenerated = 0;

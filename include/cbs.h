@@ -42,6 +42,6 @@ struct AStarNode {
     uint timeStep;
 };
 
-std::vector<AStarPath> findSolution(Map map, std::vector<HeuristicTable> heuristics);
+std::vector<AStarPath> findSolution(Map map, HeuristicType type);
 
 HeuristicTable computeHeuristics(HeuristicType type, AStarLocation goal, Map map);
