@@ -1,10 +1,13 @@
 #include "../../include/raylib.h"
 #include "../../include/map.h"
 #include "../../include/defs.h"
+#include "../../include/cbs.h"
 
 #include <iostream>
 
 #define tileSize 50
+
+#define speed .0334f
 
 void drawMap(Map map) {
     Color wallColor = DARKGRAY;
@@ -34,31 +37,72 @@ void drawMap(Map map) {
         draw.a = 150;
         DrawRectangle(x * tileSize + margin / 2, y * tileSize + margin / 2, tileSize - margin, tileSize - margin, draw);
 
-        x = actor.curr.first;
-        y = actor.curr.second;
-        uint radius = tileSize / 2;
+        float ax = actor.animCurr.first;
+        float ay = actor.animCurr.second;
+        uint radius = tileSize / 2 - 5;
         margin = 2;
         draw.a = 255;
 
-        DrawCircle(x * tileSize + radius + margin / 2, y * tileSize + radius + margin / 2, radius - margin, draw);
+        DrawCircle(ax * tileSize + radius + margin / 2 + 5, ay * tileSize + radius + margin / 2 + 5, radius - margin, draw);
 
-        DrawText(TextFormat("%d", a), x * tileSize + radius + margin / 2 - 4, y * tileSize + radius + margin / 2 - 8, 20, BLACK);
+        DrawText(TextFormat("%d", a), ax * tileSize + radius + margin / 2 - 4 + 5, ay * tileSize + radius + margin / 2 - 8 + 5, 20, BLACK);
+    }
+}
+
+void updateMap(Map& map, std::vector<AStarPath> soln, uint timestep) {
+    for (int a = 0; a < map.nAgents; a++) {
+        Agent& actor = map.agents[a];
+        uint dir = 4;
+
+        if (timestep + 1 >= soln[a].size()) continue;
+
+        AStarLocation nextLoc = soln[a][timestep + 1];
+        if (nextLoc.first > actor.curr.first) actor.animCurr.first += speed; // east
+        else if (nextLoc.first < actor.curr.first) actor.animCurr.first -= speed; // west
+        else if (nextLoc.second > actor.curr.second) actor.animCurr.second += speed; // south
+        else if (nextLoc.second < actor.curr.second) actor.animCurr.second -= speed; // north
+    }
+}
+
+void stepTimestep(Map& map, std::vector<AStarPath> soln, uint timestep) {
+    for (int a = 0; a < map.nAgents; a++) {
+        Agent& actor = map.agents[a];
+        actor.curr = soln[a][timestep];
+
+        actor.animCurr = std::make_pair((float)actor.curr.first, (float)actor.curr.second);
     }
 }
 
 int main() {
+    HeuristicType type = CG;
+
     Map map = {};
     map.loadFromFile("instances/test.txt");
 
     map.printTiles();
 
+    std::vector<AStarPath> soln = findSolution(map, type);
+    
     uint windowWidth = map.cols * tileSize;
     uint windowHeight = map.rows * tileSize;
 
     InitWindow(windowWidth, windowHeight, "Visualization test");
 
-    SetTargetFPS(30); 
+    float elapsed = 0.f;
+    uint timestep = 0;
+
+    SetTargetFPS(30);
     while (!WindowShouldClose()) {
+        elapsed += GetFrameTime();
+
+        if (elapsed >= 1.f) {
+            timestep++;
+            elapsed = 0.f;
+            stepTimestep(map, soln, timestep);
+        }
+
+        updateMap(map, soln, timestep);
+
         BeginDrawing();
 
         ClearBackground(BLACK);
@@ -68,7 +112,7 @@ int main() {
 
         EndDrawing();
     }
-
+    
     map.destroy();
 
     CloseWindow();
