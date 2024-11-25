@@ -1,10 +1,11 @@
 CC = g++
 INC = -I include/
+SRC = src/map.cpp
 
 VIS_TEST_SRC = src/visualizer/vis_load.cpp src/visualizer/vis.cpp
 VIS_TEST_EXE = -o bin/vis_test.exe
 VIS_TEST_LIB = -Llib/ -lraylib -lopengl32 -lgdi32 -lwinmm
-VIS_TEST_FLAG = -mwindows -O3 -Wno-missing-braces
+VIS_TEST_FLAG = -O3
 
 NON_VIS_FLAG = -std=c++14 -O3 -pthread
 
@@ -19,16 +20,16 @@ WDG_EXE = -o bin/wdg_test
 
 
 cg_test:
-	$(CC) $(CG_SRC) $(CG_EXE) $(NON_VIS_FLAG) $(INC)
+	$(CC) $(CG_SRC) $(SRC) $(CG_EXE) $(NON_VIS_FLAG) $(INC)
 
 dg_test:
-	$(CC) $(DG_SRC) $(DG_EXE) $(NON_VIS_FLAG) $(INC)
+	$(CC) $(DG_SRC) $(SRC) $(DG_EXE) $(NON_VIS_FLAG) $(INC)
 
 wdg_test:
-	$(CC) $(WDG_SRC) $(WDG_EXE) $(NON_VIS_FLAG) $(INC)
+	$(CC) $(WDG_SRC) $(SRC) $(WDG_EXE) $(NON_VIS_FLAG) $(INC)
 
 vis_test:
-	$(CC) $(VIS_TEST_SRC) $(VIS_TEST_EXE) $(VIS_TEST_FLAG) $(INC) $(VIS_TEST_LIB)
+	$(CC) $(VIS_TEST_SRC) $(SRC) $(VIS_TEST_EXE) $(VIS_TEST_FLAG) $(INC) $(VIS_TEST_LIB)
 
 clean:
 	rm -f bin/*
