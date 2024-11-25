@@ -84,15 +84,18 @@ HeuristicTable computeDefaultHeuristic(AStarLocation goal, Map map) {
 
 HeuristicTable computeHeuristics(HeuristicType type, AStarLocation goal, Map map) {
     switch (type) {
-        case CG:
-            //return computeCGHeuristic(goal, map);
         case DEFAULT:
             return computeDefaultHeuristic(goal, map);
+        case CG:
+            //return computeCGHeuristic(goal, map);
+            break;
         case DG:
             return computeDGHeuristic(goal, map);
         case WDG:
             return computeWDGHeuristic(goal, map);
     }
+
+    return computeDefaultHeuristic(goal, map);
 }
 
 ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable goalWalls) {
