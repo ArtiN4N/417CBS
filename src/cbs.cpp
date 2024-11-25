@@ -12,6 +12,7 @@ AStarLocation move(AStarLocation location, Direction dir) {
         case WEST:
             ret.first--;
         default:
+            break;
     }
 
     return ret;
