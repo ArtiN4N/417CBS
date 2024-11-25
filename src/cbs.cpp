@@ -36,7 +36,7 @@ HeuristicTable computeDefaultHeuristic(AStarLocation goal, Map map) {
     };
 
     std::priority_queue<int, std::vector<HNode>, CompareHNode> openList;
-    std::unordered_map<AStarLocation, HNode> closedList;
+    std::unordered_map<AStarLocation, HNode, PairHash> closedList;
 
     HNode root = { goal, 0 };
     openList.push(root);
@@ -231,7 +231,7 @@ AStarPath aStar(
     };
 
     std::priority_queue<int, std::vector<AStarNode>, CompareANode> openList;
-    std::unordered_map<std::pair<AStarLocation, uint>, AStarNode> closedList;
+    std::unordered_map<std::pair<AStarLocation, uint>, AStarNode, PairHash> closedList;
 
     GoalWallTable goalWalls;
 
