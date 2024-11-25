@@ -11,10 +11,10 @@ NON_VIS_FLAG = -std=c++14 -O3 -pthread
 CG_SRC = src/cg/cg_load.cpp
 CG_EXE = -o bin/cg_test
 
-DG_SRC = src/dg/cg_load.cpp
+DG_SRC = src/dg/dg_load.cpp
 DG_EXE = -o bin/dg_test
 
-WDG_SRC = src/wdg/cg_load.cpp
+WDG_SRC = src/wdg/wdg_load.cpp
 WDG_EXE = -o bin/wdg_test
 
 
