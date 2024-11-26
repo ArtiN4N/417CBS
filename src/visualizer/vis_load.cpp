@@ -43,9 +43,9 @@ void drawMap(Map map) {
         margin = 2;
         draw.a = 255;
 
-        DrawCircle(ax * tileSize + radius + margin / 2 + 5, ay * tileSize + radius + margin / 2 + 5, radius - margin, draw);
+        DrawCircle(ax * tileSize + radius + margin / 2 + 4.4, ay * tileSize + radius + margin / 2 + 4.4, radius - margin, draw);
 
-        DrawText(TextFormat("%d", a), ax * tileSize + radius + margin / 2 - 4 + 5, ay * tileSize + radius + margin / 2 - 8 + 5, 20, BLACK);
+        DrawText(TextFormat("%d", a), ax * tileSize + radius + margin / 2 - 4 + 4.4, ay * tileSize + radius + margin / 2 - 8 + 4.4, 20, BLACK);
     }
 }
 
@@ -66,6 +66,8 @@ void updateMap(Map& map, std::vector<AStarPath> soln, uint timestep) {
 
 void stepTimestep(Map& map, std::vector<AStarPath> soln, uint timestep) {
     for (int a = 0; a < map.nAgents; a++) {
+        if (timestep >= soln[a].size()) continue;
+
         Agent& actor = map.agents[a];
         actor.curr = soln[a][timestep];
 
@@ -77,7 +79,7 @@ int main() {
     HeuristicType type = CG;
 
     Map map = {};
-    map.loadFromFile("instances/test.txt");
+    map.loadFromFile("instances/test_50.txt");
 
     map.printTiles();
 
