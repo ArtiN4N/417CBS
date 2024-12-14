@@ -4,7 +4,7 @@
 #include "../../include/defs.h"
 #include "../../include/cbs.h"
 
-int main() {
+int main(int argc, char* argv[]) {
     if (argc != 2) {
         std::cerr << "Usage: " << argv[0] << " <number from 1 to 33>\n";
         return 1;
@@ -33,15 +33,19 @@ int main() {
             return -1;
         }
 
-        int lineCount = 0;
+        int aCount = 0;
         std::string line;
 
-        std::getline(file, line)
+        std::getline(file, line);
 
         while (std::getline(file, line)) {
+            aCount++;
+
             map.addAgentFromLine(line);
-            map.printTiles();
+            //map.printTiles();
             std::vector<AStarPath> soln = findSolution(map, type);
+            if (soln.size() > 0) std::cout << "fount solution with " << aCount << " agents\n";
+            else break;
         }
     }
 
