@@ -46,15 +46,68 @@ void Map::loadFromFile(std::string path) {
     file.close();
 }
 
+std::string getFileFromInt(int f) {
+    switch (f) {
+        
+    }
+}
+
+std::string Map::loadMapBoundsFromFile(int mapFile) {
+    std::string mapFileName = getFileFromInt(mapFile);
+    std::ifstream file("autotest/mapf-map/" + mapFileName + ".map");
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open map file : " << path << std::endl;
+        return;
+    }
+
+    std::string word;
+
+    while (file >> word) {
+        if (word == "height") {
+            file >> rows;
+        } else if (word == "width") {
+            file >> cols;
+        } else if (word == "map") {
+            break;
+        }
+    }
+
+    tiles = new bool*[cols];
+    for (int c = 0; c < cols; c++) tiles[c] = new bool[rows];
+
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            char symbol;
+            file >> symbol;
+            // Walls, or the "@" symbol, have a true value
+            tiles[c][r] = (symbol == '@');
+        }
+    }
+
+    return mapFileName;
+}
+void Map::addAgentFromLine(std::string line);
+void Map::initAgents() {
+    nAgents = 0;
+
+    agents = {};
+    starts = {};
+    goals = {};
+}
+void Map::resetAgents() {
+    nAgents = 0;
+
+    agents.clear();
+    starts.clear();
+    goals.clear();
+}
+
 void Map::destroy() {
     if (!loaded) return;
     for (int i = 0; i < rows; i++) delete[] tiles[i];
 
     delete[] tiles;
-
-    delete[] agents;
-    delete[] starts;
-    delete[] goals;
 }
 
 void Map::printTiles() {
@@ -63,7 +116,7 @@ void Map::printTiles() {
         for (int c = 0; c < cols; c++) {
             std::string symbol = ".";
             if (tiles[c][r]) symbol = "@";
-        
+
             for (int a = 0; a < nAgents; a++) {
                 if (starts[a].first == c && starts[a].second == r) symbol = std::to_string(a);
             }
@@ -78,7 +131,7 @@ void Map::printTiles() {
         for (int c = 0; c < cols; c++) {
             std::string symbol = ".";
             if (tiles[c][r]) symbol = "@";
-        
+
             for (int a = 0; a < nAgents; a++) {
                 if (goals[a].first == c && goals[a].second == r) symbol = std::to_string(a);
             }

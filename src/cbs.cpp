@@ -422,9 +422,16 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type) {
     }
 
     uint maxPathLength = map.cols * map.rows * 10;
+    uint maxIters = maxPathLength * 10 * map.nAgents * 10;
+    uint i = 0;
 
     while (openList.size() > 0) {
-        std::cout << "\n############ EXPANDING NODE ############" << std::endl;
+        i++;
+        if (i > maxIters) {
+            std::cout << "Broke from maxIters\n";
+            break;
+        }
+
         CBSNode curr = openList.top();
         openList.pop();
         nExpanded++;
