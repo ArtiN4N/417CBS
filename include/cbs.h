@@ -6,6 +6,10 @@
 #include <climits>
 #include <set>
 
+#include <iostream>
+#include <fstream>
+#include <string>
+
 #include "defs.h"
 
 #include "map.h"
@@ -58,6 +62,6 @@ struct AStarNode
     uint timeStep;
 };
 
-std::vector<AStarPath> findSolution(Map map, HeuristicType type);
+std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName);
 
 HeuristicTable computeHeuristics(HeuristicType type, AStarLocation goal, Map map);

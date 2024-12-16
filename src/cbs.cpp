@@ -457,13 +457,21 @@ void printConstraint(Constraint c)
     std::cout << std::endl;
 }
 
-void printResults(std::vector<AStarPath> paths, uint nExpanded, uint nGenerated, double elapsed)
-{
-    std::cout << "Found a solution!" << std::endl;
-    std::cout << "Time elapsed : " << elapsed << std::endl;
-    std::cout << "Sum of costs : " << getSumOfCost(paths) << std::endl;
-    std::cout << "Expanded nodes : " << nExpanded << std::endl;
-    std::cout << "Generated nodes : " << nGenerated << std::endl;
+void printResults(std::vector<AStarPath> paths, uint nExpanded, uint nGenerated, double elapsed, std::string filename) {
+
+    std::ofstream file;
+
+    std::string text = std::to_string(elapsed) + "," + std::to_string(getSumOfCost(paths));
+
+    file.open("autotest/tests/" + filename, std::ios::app); // open to append mode
+    file << text << std::endl;
+    file.close();
+
+    //std::cout << "Found a solution!" << std::endl;
+    //std::cout << "Time elapsed : " << elapsed << std::endl;
+    //std::cout << "Sum of costs : " << getSumOfCost(paths) << std::endl;
+    //std::cout << "Expanded nodes : " << nExpanded << std::endl;
+    //std::cout << "Generated nodes : " << nGenerated << std::endl;
 }
 
 void printAStarPath(AStarPath path)
@@ -643,8 +651,7 @@ int computeDGHeuristic(const Map &map, const std::vector<HeuristicTable> &heuris
     return minimumVertexCover(conflictingAgentPairs);
 }
 
-std::vector<AStarPath> findSolution(Map map, HeuristicType type)
-{
+std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName) {
     std::vector<HeuristicTable> heuristics;
     for (int a = 0; a < map.nAgents; a++)
     {
@@ -730,7 +737,7 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type)
         {
             auto end = std::chrono::high_resolution_clock::now();
             auto secs = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
-            printResults(curr.paths, nExpanded, nGenerated, secs);
+            printResults(curr.paths, nExpanded, nGenerated, secs, experimentName);
 
             return curr.paths;
         }

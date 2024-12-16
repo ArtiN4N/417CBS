@@ -22,7 +22,14 @@ int main(int argc, char* argv[]) {
     Map map = {};
     map.initAgents();
     std::string mapName = map.loadMapBoundsFromFile(number);
-    for (int scen = 1; scen < 26; scen++) {
+    for (int scen = 1; scen < 4; scen++) {
+
+        std::string experimentName = "map" + std::to_string(number) + "scen" + std::to_string(scen) + ".out";
+        std::ifstream infile("autotest/tests/" + experimentName);
+        if (infile) {
+            // Clear file contents
+            std::ofstream("autotest/tests/" + experimentName, std::ios::trunc).close();
+        }
 
         map.resetAgents();
 
@@ -42,8 +49,8 @@ int main(int argc, char* argv[]) {
             aCount++;
 
             map.addAgentFromLine(line);
-            map.printTiles();
-            std::vector<AStarPath> soln = findSolution(map, type);
+            //map.printTiles();
+            std::vector<AStarPath> soln = findSolution(map, type, experimentName);
             if (soln.size() > 0) std::cout << "fount solution with " << aCount << " agents\n";
             else break;
         }
