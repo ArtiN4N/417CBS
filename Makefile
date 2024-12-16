@@ -3,9 +3,11 @@ INC = -I include/
 SRC = src/map.cpp src/cbs.cpp src/cg/heuristic.cpp src/dg/heuristic.cpp src/wdg/heuristic.cpp
 
 VIS_TEST_SRC = src/visualizer/vis_load.cpp src/visualizer/vis.cpp
-VIS_TEST_EXE = -o bin/vis_test.exe
+VIS_TEST_EXE = -o bin/vis_test
 VIS_TEST_LIB = -Llib/ -lraylib -lopengl32 -lgdi32 -lwinmm
 VIS_TEST_FLAG = -O3
+VIS_TEST_LIB_LIN = -L lib/ -lraylibl -lm -lpthread -ldl -lrt
+
 
 FLAG = -std=c++14 -O3 -pthread
 
@@ -30,6 +32,9 @@ wdg_test:
 
 vis_test:
 	$(CC) $(VIS_TEST_SRC) $(SRC) $(VIS_TEST_EXE) $(VIS_TEST_FLAG) $(FLAG) $(INC) $(VIS_TEST_LIB)
+
+vis_test_linux:
+	$(CC) $(VIS_TEST_SRC) $(SRC) $(VIS_TEST_EXE) $(VIS_TEST_FLAG) $(FLAG) $(INC) $(VIS_TEST_LIB_LIN)
 
 clean:
 	rm -f bin/*
