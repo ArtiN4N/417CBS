@@ -346,17 +346,25 @@ std::vector<AStarPath> aStar(
         AStarNode *curr = openList.top();
         openList.pop();
 
+        AStarPath cpath = getPath(curr);
+        int cpathCost = cpath.size();
+        if (cpathCost > shortestCost) continue;
+
         if (curr->location == goalLoc && curr->timeStep >= maxTimestep)
         {
-            AStarPath path = getPath(curr);
+            //std::cout << "found a shortest path\n";
+            
 
             // Determine the path cost (length of the path)
-            int pathCost = path.size();
+            
 
-            if (pathCost <= shortestCost)
-            {
-                shortestCost = pathCost;
-                shortestPaths.push_back(path);
+            if (cpathCost < shortestCost) {
+                shortestPaths.clear();
+            }
+
+            if (cpathCost <= shortestCost){
+                shortestCost = cpathCost;//pathCost;
+                shortestPaths.push_back(cpath);
 
                 // for (const auto& path : shortestPaths) {
                 //     std::cout << "Path for " << agent << ": ";

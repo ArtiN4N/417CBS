@@ -149,7 +149,8 @@ std::string Map::loadMapBoundsFromFile(int mapFile) {
             char symbol;
             file >> symbol;
             // Walls, or the "@" symbol, have a true value
-            tiles[c][r] = (symbol == '@');
+            //std::cout << symbol << " compared to " << 'T' << std::endl;
+            tiles[c][r] = (symbol != '.');
         }
     }
     

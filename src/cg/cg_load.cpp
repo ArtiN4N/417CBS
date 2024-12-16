@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
             aCount++;
 
             map.addAgentFromLine(line);
-            //map.printTiles();
+            map.printTiles();
             std::vector<AStarPath> soln = findSolution(map, type);
             if (soln.size() > 0) std::cout << "fount solution with " << aCount << " agents\n";
             else break;
