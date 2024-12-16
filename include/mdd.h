@@ -44,21 +44,25 @@ struct MDDNode {
         }
     }
 };
-struct MDD {
+class MDD {
+public:
     // Must maintain size of cost * vertices?
     std::vector<std::vector<MDDNode*>> timesteps;
     int maxTimestep;
     int totalNodes;
     // Every agent has a start and goal
-    int startNode;
-    int goalNode;
+    AStarLocation startNode;
+    AStarLocation goalNode;
 
-    MDD(int maxTimeStep);
+    MDD(int maxTimestep, AStarLocation startNode, AStarLocation goalNode);
 
     // Add to specific timestep, add an edge to the parent and return nodeID
     int addNode(int timeStep, int parentID);
 
     // Find a specific node without know its timestep?
     MDDNode findNode(int nodeID);
+    
+    MDD();
+    ~MDD();
 
 };
