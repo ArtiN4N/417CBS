@@ -57,7 +57,7 @@ public:
     MDD(int timestep, AStarLocation start, AStarLocation goal) : maxTimestep(timestep), startNode(start), goalNode(goal){}
     // int not void as then it can return error codes
     int createMDD(ConstraintTable ctable, Agent a);
-    // Add to specific timestep, add an edge to the parent and return nodeID
+    // Add to specific timestep, add an edge to the parent and return 0 or 1
     int addNode(MDDNode *parent, AStarLocation loc);
 
     // Find a specific node without know its timestep?
