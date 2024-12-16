@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <queue>
 #include <chrono>
+#include <climits>
+#include <set>
 
 #include "defs.h"
 
@@ -11,7 +13,8 @@
 #include "dg.h"
 #include "wdg.h"
 
-struct Collision {
+struct Collision
+{
     uint agentId;
     uint agentId2;
 
@@ -22,7 +25,8 @@ struct Collision {
     bool isGoalWall;
 };
 
-struct Constraint {
+struct Constraint
+{
     uint agentId;
 
     CollisionLocation location;
@@ -31,7 +35,8 @@ struct Constraint {
 
     bool isGoalWall;
 
-    bool operator==(const Constraint& other) const {
+    bool operator==(const Constraint &other) const
+    {
         bool idEqual = this->agentId == other.agentId;
         bool timeEqual = this->timeStep == other.timeStep;
         bool typeEqual = this->location.isEdgeCollision == other.location.isEdgeCollision;
@@ -41,13 +46,14 @@ struct Constraint {
     }
 };
 
-struct AStarNode {
+struct AStarNode
+{
     AStarLocation location;
 
     uint gval;
     uint hval;
 
-    AStarNode* parent;
+    AStarNode *parent;
 
     uint timeStep;
 };
