@@ -47,17 +47,18 @@ struct MDDNode {
 class MDD {
 public:
     // Must maintain size of cost * vertices?
-    std::vector<std::vector<MDDNode*>> timesteps;
+    std::vector<std::vector<MDDNode*>> mddLayers;
     int maxTimestep;
     int totalNodes;
+    int lastNodeID = 0;
     // Every agent has a start and goal
     AStarLocation startNode;
     AStarLocation goalNode;
-
-    MDD(int maxTimestep, AStarLocation startNode, AStarLocation goalNode);
-
+    MDD(int timestep, AStarLocation start, AStarLocation goal) : maxTimestep(timestep), startNode(start), goalNode(goal){}
+    // int not void as then it can return error codes
+    int createMDD(ConstraintTable ctable, Agent a);
     // Add to specific timestep, add an edge to the parent and return nodeID
-    int addNode(int timeStep, int parentID);
+    int addNode(MDDNode *parent, AStarLocation loc);
 
     // Find a specific node without know its timestep?
     MDDNode findNode(int nodeID);
