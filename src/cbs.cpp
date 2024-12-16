@@ -696,17 +696,24 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type)
         Constraint c1 = c.first;
         Constraint c2 = c.second;
 
-        std::cout << "First constraint: ";
-        printConstraint(c1);
-        std::cout << "Second constraint: ";
-        printConstraint(c2);
+        //std::cout << "First constraint: ";
+        //printConstraint(c1);
+        //std::cout << "Second constraint: ";
+        //printConstraint(c2);
     }
 
     uint maxPathLength = map.cols * map.rows * 10;
+    uint maxIters = maxPathLength * 10 * map.nAgents;
+    uint i = 0;
 
     while (openList.size() > 0)
     {
-        std::cout << "\n############ EXPANDING NODE ############" << std::endl;
+        i++;
+        if (i > maxIters) {
+            std::cout << "Broke from maxIters\n";
+            break;
+        }
+
         CBSNode curr = openList.top();
         openList.pop();
         nExpanded++;
