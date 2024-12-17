@@ -12,14 +12,14 @@ int main(int argc, char* argv[]) {
 
     int number = std::atoi(argv[1]); // Convert argument to an integer
     bool threading = (bool) std::atoi(argv[2]);
-    int nthreads = std::atoi(argv[2]);
+    int nthreads = std::atoi(argv[3]);
 
     if (!(number >= 1 && number <= 33)) {
         std::cerr << "Error: Please enter a number between 1 and 33.\n";
         return 1;
     }
 
-    if (! nthreads >= 1) {
+    if (nthreads < 1) {
         std::cerr << "Error: Please enter a number >= 1.\n";
         return 1;
     }
