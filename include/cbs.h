@@ -21,7 +21,7 @@
 #include "cbstools.h"
 #include "mdd.h"
 
-std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName);
+std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName, bool parallel = false, uint nthreads = 1);
 
 HeuristicTable computeAstarHeuristics(HeuristicType type, AStarLocation goal, Map map);
 

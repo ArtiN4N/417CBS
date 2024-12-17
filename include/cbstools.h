@@ -65,7 +65,7 @@ struct AStarNode
 
     uint timeStep;
 };
-
+/*
 HeuristicTable computeAstarHeuristics(AStarLocation goal, Map map);
 
 ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable goalWalls);

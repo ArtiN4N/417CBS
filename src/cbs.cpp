@@ -1,9 +1,28 @@
 #include "../include/cbs.h"
 
+#include <thread>
+#include <cmath>
+
 bool PARALLELIZE = false;
 uint NTHREADS = 1;
 uint nThreads = 1;
 
+struct CBSNode
+{
+    uint cost;
+    uint heuristic;
+    std::vector<Constraint> constraints;
+    std::vector<AStarPath> paths;
+    std::vector<Collision> collisions;
+};
+
+struct CompareCBSNode
+{
+    bool operator()(const CBSNode &a, const CBSNode &b)
+    {
+        return a.cost + a.heuristic > b.cost + b.heuristic;
+    }
+};
 
 HeuristicTable computeAstarHeuristics(AStarLocation goal, Map map) {
     struct HNode {
@@ -183,23 +202,70 @@ std::pair<bool, Collision> detectCollision(AStarPath path1, AStarPath path2, uin
     return std::make_pair(valid, ret);
 }
 
-std::vector<Collision> detectCollisions(std::vector<AStarPath> paths) {
-    std::vector<Collision> ret;
+void computeCollisionForPaths(int start, int end, std::vector<AStarPath> paths, std::vector<Collision>& ret) {
+    int n = paths.size();
+    for (int k = 0; k < n * n; k++) {
+        int i = k / n;
+        int j = k % n;
 
-    // PARALLELIZE HERE
-    for (int i = 0; i < paths.size(); i++) {
-        for (int j = i + 1; j < paths.size(); j++) {
-            if (i == j)
-                continue;
+        if (i == j || j < i)
+            continue;
 
-            std::pair<bool, Collision> c = detectCollision(paths[i], paths[j], i, j);
+        std::pair<bool, Collision> c = detectCollision(paths[i], paths[j], i, j);
 
-            if (c.first)
-                ret.push_back(c.second);
-        }
+        if (c.first)
+            ret[k] = c.second;
     }
-    //////////
+}
 
+void detectParallelCollisions(std::vector<AStarPath> paths, std::vector<Collision>& ret, uint nthreads) {
+    std::vector<std::thread> threads;
+
+    int n = paths.size();
+    int total = n * (n - 1) / 2;
+
+    int perThread = std::ceil((float) total / (float) nthreads);
+
+    for (int t = 0; t < nthreads; t++) {
+        int start = t * perThread;
+        int end = std::min((t + 1) * perThread, (int) total);
+        threads.push_back(std::thread(computeCollisionForPaths, start, end, std::ref(paths), std::ref(ret)));
+    }
+
+    for (auto& t : threads) {
+        t.join();
+    }
+}
+
+void detectSerialCollisions(std::vector<AStarPath> paths, std::vector<Collision>& ret) {
+    int n = paths.size();
+    int total = n * (n - 1) / 2;
+
+    for (int k = 0; k < n * n; k++) {
+        int i = k / n;
+        int j = k % n;
+
+        if (i == j || j < i)
+            continue;
+
+        std::pair<bool, Collision> c = detectCollision(paths[i], paths[j], i, j);
+
+        if (c.first)
+            ret[k] = c.second;
+    }
+}
+
+
+std::vector<Collision> detectCollisions(std::vector<AStarPath> paths, bool parallel, uint nthreads) {
+    std::vector<Collision> ret;
+    int n = paths.size();
+    int total = n * n;
+    ret.resize(total);
+
+    if (parallel) detectParallelCollisions(paths, ret, nthreads);
+    else detectSerialCollisions(paths, ret);
+
+    ret.erase(std::remove_if(ret.begin(), ret.end(), [](const Collision& c) { return c == Collision{}; }), ret.end());
     return ret;
 }
 
@@ -376,6 +442,86 @@ void printResults(std::vector<AStarPath> paths, uint nExpanded, uint nGenerated,
     //std::cout << "Generated nodes : " << nGenerated << std::endl;
 }
 
+
+void computeSerialAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, uint nAgents) {
+    for (int a = 0; a < nAgents; a++)
+        heuristics.push_back(computeAstarHeuristics(map.agents[a].goal, map));
+}
+
+void computeHeuristicForAgent(int start, int end, std::vector<HeuristicTable>& heuristics, Map& map) {
+    for (int a = start; a < end; a++) {
+        heuristics[a] = computeAstarHeuristics(map.agents[a].goal, map);
+    }
+}
+
+void computeParallelAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, uint nAgents, uint nthreads) {
+    std::vector<std::thread> threads;
+
+    int agentsPerThread = std::ceil((float) nAgents / (float) nthreads);
+
+    heuristics.resize(nAgents);
+
+    for (int t = 0; t < nthreads; t++) {
+        int start = t * agentsPerThread;
+        int end = std::min((t + 1) * agentsPerThread, (int) nAgents);
+        threads.push_back(std::thread(computeHeuristicForAgent, start, end, std::ref(heuristics), std::ref(map)));
+    }
+
+    for (auto& t : threads) {
+        t.join();
+    }
+}
+
+void computeAllAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, bool parallel, uint nthreads) {
+    if (parallel) computeParallelAStarHeuristics(heuristics, map, map.nAgents, nthreads);
+    else computeSerialAStarHeuristics(heuristics, map, map.nAgents);
+}
+
+void computeSerialAgentPaths(Map map, std::vector<HeuristicTable> heuristics, CBSNode& root, uint nAgents) {
+    for (int a = 0; a < nAgents; a++) {
+        AStarPath path = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, root.constraints);
+        if (path.size() == 0)
+            std::cerr << "No solutions!" << std::endl;
+
+        root.paths.push_back(path);
+    }
+}
+
+void computePathForAgent(int start, int end, std::vector<HeuristicTable>& heuristics, Map& map, CBSNode& root) {
+    for (int a = start; a < end; a++) {
+        AStarPath path = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, root.constraints);
+        if (path.size() == 0)
+            std::cerr << "No solutions!" << std::endl;
+
+        root.paths[a] = path;
+    }
+}
+
+void computeParallelAgentPaths(Map map, std::vector<HeuristicTable> heuristics, CBSNode& root, uint nAgents, uint nthreads) {
+    std::vector<std::thread> threads;
+
+    int agentsPerThread = std::ceil((float) nAgents / (float) nthreads);
+
+    root.paths.resize(nAgents);
+
+    for (int t = 0; t < nthreads; t++) {
+        int start = t * agentsPerThread;
+        int end = std::min((t + 1) * agentsPerThread, (int) nAgents);
+        threads.push_back(std::thread(computePathForAgent, start, end, std::ref(heuristics), std::ref(map), std::ref(root)));
+    }
+
+    for (auto& t : threads) {
+        t.join();
+    }
+}
+
+
+void computeAllAgentPaths(Map map, std::vector<HeuristicTable> heuristics, CBSNode& root, bool parallel, uint nthreads) {
+    if (parallel) computeParallelAgentPaths(map, heuristics, root, map.nAgents, nthreads);
+    else computeSerialAgentPaths(map, heuristics, root, map.nAgents);
+}
+
+/*
 bool detectCardinalConflict(const MDD &mdd1, const MDD &mdd2)
 {
     int levels = std::min(mdd1.locsAtTime.size(), mdd2.locsAtTime.size());
@@ -431,6 +577,7 @@ bool detectCardinalConflict(const MDD &mdd1, const MDD &mdd2)
     // No cardinal or edge conflict found
     return false;
 }
+*/
 
 // Check if a set of vertices form a vertex cover
 bool isVertexCover(const std::vector<std::pair<int, int>> &edges, const std::set<int> &vertices)
@@ -772,9 +919,7 @@ std::vector<AStarPath> findSolution(
     computeAllAgentPaths(map, heuristics, root, PARALLELIZE, NTHREADS);
 
     root.cost = getSumOfCost(root.paths);
-    std::cout << "detecing collisions\n";
     root.collisions = detectCollisions(root.paths, PARALLELIZE, NTHREADS);
-    std::cout << "done detecing collisions\n";
 
     openList.push(root);
     nGenerated++;
