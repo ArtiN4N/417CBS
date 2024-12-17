@@ -54,9 +54,11 @@ public:
     // Every agent has a start and goal
     AStarLocation startNode;
     AStarLocation goalNode;
-    MDD(int timestep, AStarLocation start, AStarLocation goal) : maxTimestep(timestep), startNode(start), goalNode(goal){}
+    MDD(int timestep, AStarLocation start, AStarLocation goal) : maxTimestep(timestep), startNode(start), goalNode(goal){
+        mddLayers.resize(timestep);
+    }
     // int not void as then it can return error codes
-    int createMDD(ConstraintTable ctable, Agent a);
+    int createMDD(ConstraintTable ctable, Agent a, Map map);
     // Add to specific timestep, add an edge to the parent and return 0 or 1
     int addNode(MDDNode *parent, AStarLocation loc);
 

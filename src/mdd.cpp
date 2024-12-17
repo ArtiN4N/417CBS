@@ -15,3 +15,17 @@ int MDD::addNode(MDDNode *parent, AStarLocation loc){
         return 1;
     }
 }
+
+int MDD::createMDD(ConstraintTable cTable, Agent agent1, Map map){
+    std::queue<MDDNode*> openList;
+    std::vector<MDDNode*> closedList;
+    MDDNode *root = new MDDNode(nullptr, agent1.start);
+    openList.push(root);
+	closedList.push_back(root);
+    while(openList.size() > 0){
+        MDDNode *curr = openList.front();
+        openList.pop();
+        
+    }
+
+}
