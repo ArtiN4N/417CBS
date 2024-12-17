@@ -299,68 +299,71 @@ int computeCGHeuristic(const Map &map, const std::vector<Constraint> &constraint
     // Compute the minimum vertex cover for the conflict graph
     return minimumVertexCover(conflictingAgentPairs);
 }
+/*
+bool detectDependecy(const std::vector<AStarPath>& paths1, const std::vector<AStarPath>& paths2) {
+    for (uint path1 = 0; path1 < paths1.size(); path1++) {
+        for (uint path2 = 0; path2 < paths2.size(); path2++) {
 
-// bool detectDependecy(const std::vector<AStarPath>& paths1, const std::vector<AStarPath>& paths2) {
-//     for (uint path1 = 0; path1 < paths1.size(); path1++) {
-//         for (uint path2 = 0; path2 < paths2.size(); path2++) {
+            size_t maxTimestep = 0;
+            for (const auto& path : paths1) {
+                maxTimestep = std::max(maxTimestep, path.size());
+            }
+            for (const auto& path : paths2) {
+                maxTimestep = std::max(maxTimestep, path.size());
+            }
 
-//             size_t maxTimestep = 0;
-//             for (const auto& path : paths1) {
-//                 maxTimestep = std::max(maxTimestep, path.size());
-//             }
-//             for (const auto& path : paths2) {
-//                 maxTimestep = std::max(maxTimestep, path.size());
-//             }
+            bool conflict = false;
 
-//             bool conflict = false;
+            for (uint t = 0; t < maxTimestep; t++) {
+                if (getLocation(paths1[path1], t) == getLocation(paths2[path2],t)) {
+                    conflict = true;
+                    break;
+                }
+            }
 
-//             for (uint t = 0; t < maxTimestep; t++) {
-//                 if (getLocation(paths1[path1], t) == getLocation(paths2[path2],t)) {
-//                     conflict = true;
-//                     break;
-//                 }
-//             }
+            if (!conflict) { // if we go through a pair of paths with no conflicts then these agents arent dependent
+                return false;
+            }
+        }
+    }
+    return true;
+}
+*/
 
-//             if (!conflict) { // if we go through a pair of paths with no conflicts then these agents arent dependent
-//                 return false;
-//             }
-//         }
-//     }
-//     return true;
-// }
+/*
+int computeDGHeuristic(const Map& map, const std::vector<HeuristicTable>& heuristics, const std::vector<Constraint>& constraints) {
+    std::unordered_map<int, std::vector<AStarPath>> agentPaths;
+    // list to store pairs of agents with cardinal conflicts
+    std::vector<std::pair<int, int>> conflictingAgentPairs;
 
-// int computeDGHeuristic(const Map& map, const std::vector<HeuristicTable>& heuristics, const std::vector<Constraint>& constraints) {
-//     std::unordered_map<int, std::vector<AStarPath>> agentPaths;
-//     // list to store pairs of agents with cardinal conflicts
-//     std::vector<std::pair<int, int>> conflictingAgentPairs;
+    for (int a = 0; a < map.nAgents; ++a) {
+        agentPaths[a] = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, constraints);
+    }
 
-//     for (int a = 0; a < map.nAgents; ++a) {
-//         agentPaths[a] = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, constraints);
-//     }
+      for (size_t i = 0; i < map.nAgents; i++) {
+        for (size_t j = i + 1; j < map.nAgents; j++) {
 
-//       for (size_t i = 0; i < map.nAgents; i++) {
-//         for (size_t j = i + 1; j < map.nAgents; j++) {
+            const std::vector<AStarPath> paths1 = agentPaths[i];
+            const std::vector<AStarPath> paths2 = agentPaths[j];
 
-//             const std::vector<AStarPath> paths1 = agentPaths[i];
-//             const std::vector<AStarPath> paths2 = agentPaths[j];
+            if (detectCardinalConflict(paths1, paths2)) { // if they have cardinal conflict they are dependent
+                conflictingAgentPairs.emplace_back(i, j);
+            } else if (detectDependecy(paths1, paths2)) { // explicitly check for dependency
+                conflictingAgentPairs.emplace_back(i, j);
+            }
+        }
+    }
 
-//             if (detectCardinalConflict(paths1, paths2)) { // if they have cardinal conflict they are dependent
-//                 conflictingAgentPairs.emplace_back(i, j);
-//             } else if (detectDependecy(paths1, paths2)) { // explicitly check for dependency
-//                 conflictingAgentPairs.emplace_back(i, j);
-//             }
-//         }
-//     }
+       // Print conflicting agent pairs
+    std::cout << "Conflicting Agent Pairs:" << std::endl;
+    for (const auto& pair : conflictingAgentPairs) {
+        std::cout << "(" << pair.first << ", " << pair.second << ")" << std::endl;
+    }
 
-//        // Print conflicting agent pairs
-//     std::cout << "Conflicting Agent Pairs:" << std::endl;
-//     for (const auto& pair : conflictingAgentPairs) {
-//         std::cout << "(" << pair.first << ", " << pair.second << ")" << std::endl;
-//     }
+    return minimumVertexCover(conflictingAgentPairs);
 
-//     return minimumVertexCover(conflictingAgentPairs);
-
-// }
+}
+*/
 
 std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName)
 {
