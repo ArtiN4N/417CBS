@@ -61,7 +61,7 @@ bool MDD::createMDD(AStarLocation start, int time, uint agent, const std::vector
             continue;
 
         // Define the heuristic bound for pruning
-        double heuristicBound = time - curr->level - 2 + 0.001;
+        int heuristicBound = time - curr->level - 2;
 
         for (uint i = 0; i < 5; i++) // Check all possible moves
         {
