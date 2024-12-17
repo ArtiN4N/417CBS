@@ -33,6 +33,10 @@ struct CollisionLocation {
     bool isEdgeCollision;
 
     AStarLocation l2;
+
+    bool operator==(const CollisionLocation& other) const {
+        return l1 == other.l1 && l2 == other.l2 && isEdgeCollision == other.isEdgeCollision;
+    }
 };
 
 typedef std::vector<std::pair<uint, uint>> AStarPath;

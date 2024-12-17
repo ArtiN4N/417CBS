@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
     map.initAgents();
     map.loadFromFile("instances/test_50.txt");
 
-    std::vector<AStarPath> soln = findSolution(map, type, "useless.txt");
+    std::vector<AStarPath> soln = findSolution(map, type, "useless.txt", false, 1);
     if (soln.size() > 0) std::cout << "fount solution with " << map.nAgents << " agents\n";
 
     map.destroy();

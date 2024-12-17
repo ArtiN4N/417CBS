@@ -324,14 +324,14 @@ std::vector<AStarPath> findSolution(
     bool parallel, uint nthreads
 ) {
 
+    auto start = std::chrono::high_resolution_clock::now();
+
     PARALLELIZE = parallel;
     NTHREADS = nthreads;
 
     std::vector<HeuristicTable> heuristics;
 
     computeAllAStarHeuristics(heuristics, map, PARALLELIZE, NTHREADS);
-
-    auto start = std::chrono::high_resolution_clock::now();
 
     uint nGenerated = 0;
     uint nExpanded = 0;
@@ -343,7 +343,9 @@ std::vector<AStarPath> findSolution(
     computeAllAgentPaths(map, heuristics, root, PARALLELIZE, NTHREADS);
 
     root.cost = getSumOfCost(root.paths);
-    root.collisions = detectCollisions(root.paths);
+    std::cout << "detecing collisions\n";
+    root.collisions = detectCollisions(root.paths, PARALLELIZE, NTHREADS);
+    std::cout << "done detecing collisions\n";
 
     openList.push(root);
     nGenerated++;
@@ -402,7 +404,7 @@ std::vector<AStarPath> findSolution(
             if (path.size() > 0)
             {
                 qNode.paths[agentId] = path;
-                qNode.collisions = detectCollisions(qNode.paths);
+                qNode.collisions = detectCollisions(qNode.paths, PARALLELIZE, NTHREADS);
                 qNode.cost = getSumOfCost(qNode.paths);
 
                 if (qNode.cost >= maxPathLength)

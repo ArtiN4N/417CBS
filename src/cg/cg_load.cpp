@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
 
             map.addAgentFromLine(line);
             //map.printTiles();
-            std::vector<AStarPath> soln = findSolution(map, type, experimentName);
+            std::vector<AStarPath> soln = findSolution(map, type, experimentName, false, 1);
             if (soln.size() > 0) std::cout << "fount solution with " << aCount << " agents\n";
             else break;
         }
