@@ -61,7 +61,7 @@ struct AStarNode
 
     uint timeStep;
 };
-
+/*
 HeuristicTable computeAstarHeuristics(AStarLocation goal, Map map);
 
 ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable goalWalls);
@@ -96,3 +96,4 @@ void printCollisionLocation(CollisionLocation l);
 void printConstraint(Constraint c);
 
 void printResults(std::vector<AStarPath> paths, uint nExpanded, uint nGenerated, double elapsed, std::string filename);
+*/
