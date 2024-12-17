@@ -20,15 +20,42 @@ bool detectCardinalConflict(const MDD &mdd1, const MDD &mdd2)
             MDDNode *node1 = nodes1.front();
             MDDNode *node2 = nodes2.front();
 
-            // Compare their locations
-            if (node1->location == node2->location)
+            AStarLocation loc1 = node1->location;
+            AStarLocation loc2 = node2->location;
+
+            // Compare their locations at the same time
+            if (loc1 == loc2)
             {
                 return true; // Cardinal conflict detected
+            }
+
+            // Check for edge collision (starting from level 1)
+            if (level > 0)
+            {
+                // Get the previous level's locations for both MDDs
+                const std::list<MDDNode *> &prevNodes1 = mdd1.locsAtTime[level - 1];
+                const std::list<MDDNode *> &prevNodes2 = mdd2.locsAtTime[level - 1];
+
+                // Ensure both previous levels also have exactly one node
+                if (prevNodes1.size() == 1 && prevNodes2.size() == 1)
+                {
+                    MDDNode *prevNode1 = prevNodes1.front();
+                    MDDNode *prevNode2 = prevNodes2.front();
+
+                    AStarLocation prevLoc1 = prevNode1->location;
+                    AStarLocation prevLoc2 = prevNode2->location;
+
+                    // Detect edge collision
+                    if (prevLoc1 == loc2 && prevLoc2 == loc1)
+                    {
+                        return true; // Edge conflict detected
+                    }
+                }
             }
         }
     }
 
-    // No cardinal conflict found
+    // No cardinal or edge conflict found
     return false;
 }
 
@@ -177,10 +204,10 @@ std::vector<AStarPath> aStarforHeurs(
         if (curr->location == goalLoc && curr->timeStep >= maxTimestep)
         {
             //std::cout << "found a new path\n";
-            
+
 
             // Determine the path cost (length of the path)
-            
+
 
             if (cpathCost < shortestCost) {
                 shortestPaths.clear();
@@ -299,71 +326,72 @@ int computeCGHeuristic(const Map &map, const std::vector<Constraint> &constraint
     // Compute the minimum vertex cover for the conflict graph
     return minimumVertexCover(conflictingAgentPairs);
 }
-/*
-bool detectDependecy(const std::vector<AStarPath>& paths1, const std::vector<AStarPath>& paths2) {
-    for (uint path1 = 0; path1 < paths1.size(); path1++) {
-        for (uint path2 = 0; path2 < paths2.size(); path2++) {
 
-            size_t maxTimestep = 0;
-            for (const auto& path : paths1) {
-                maxTimestep = std::max(maxTimestep, path.size());
-            }
-            for (const auto& path : paths2) {
-                maxTimestep = std::max(maxTimestep, path.size());
-            }
+bool detectDependency(const MDD &mdd1, const MDD &mdd2)
+{
+    // Check for empty MDDs
+    if (mdd1.locsAtTime.empty() || mdd2.locsAtTime.empty())
+        return false; // No dependency if any MDD is empty
 
-            bool conflict = false;
+    int minLevels = std::min(mdd1.locsAtTime.size(), mdd2.locsAtTime.size());
 
-            for (uint t = 0; t < maxTimestep; t++) {
-                if (getLocation(paths1[path1], t) == getLocation(paths2[path2],t)) {
-                    conflict = true;
-                    break;
+    std::vector<std::vector<std::pair<MDDNode *, MDDNode *>>> jointMDD(minLevels);
+
+    // Add the roots
+    jointMDD[0].emplace_back(mdd1.locsAtTime[0].front(), mdd2.locsAtTime[0].front());
+
+    // Traverse levels of the MDDs
+    for (int level = 1; level < minLevels; level++)
+    {
+        for (const auto &pair : jointMDD[level - 1])
+        {
+            MDDNode *parent1 = pair.first;
+            MDDNode *parent2 = pair.second;
+
+            // Explore all child combinations of the current pair
+            for (MDDNode *child1 : parent1->childs)
+            {
+                for (MDDNode *child2 : parent2->childs)
+                {
+                    if (child1->location != child2->location)
+                    {
+                        jointMDD[level].emplace_back(child1, child2);
+                    }
                 }
             }
-
-            if (!conflict) { // if we go through a pair of paths with no conflicts then these agents arent dependent
-                return false;
-            }
         }
     }
-    return true;
+    return jointMDD[minLevels - 1].empty();
 }
-*/
 
-/*
-int computeDGHeuristic(const Map& map, const std::vector<HeuristicTable>& heuristics, const std::vector<Constraint>& constraints) {
-    std::unordered_map<int, std::vector<AStarPath>> agentPaths;
-    // list to store pairs of agents with cardinal conflicts
+int computeDGHeuristic(const Map &map, const std::vector<Constraint> &constraints, const std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
+{
     std::vector<std::pair<int, int>> conflictingAgentPairs;
+    std::vector<MDD> mdds(map.nAgents); // Pre-allocate memory for MDDs
 
-    for (int a = 0; a < map.nAgents; ++a) {
-        agentPaths[a] = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, constraints);
+    // Create MDDs for all agents
+    for (int i = 0; i < map.nAgents; i++)
+    {
+        AStarPath pathi = paths[i];
+        mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
     }
 
-      for (size_t i = 0; i < map.nAgents; i++) {
-        for (size_t j = i + 1; j < map.nAgents; j++) {
-
-            const std::vector<AStarPath> paths1 = agentPaths[i];
-            const std::vector<AStarPath> paths2 = agentPaths[j];
-
-            if (detectCardinalConflict(paths1, paths2)) { // if they have cardinal conflict they are dependent
+    for (size_t i = 0; i < map.nAgents; i++)
+    {
+        for (size_t j = i + 1; j < map.nAgents; j++)
+        {
+            if (detectCardinalConflict(mdds[i], mdds[j]))
+            { // if they have cardinal conflict they are dependent
                 conflictingAgentPairs.emplace_back(i, j);
-            } else if (detectDependecy(paths1, paths2)) { // explicitly check for dependency
+            }
+            else if (detectDependency(mdds[i], mdds[j]))
+            { // explicitly check for dependency
                 conflictingAgentPairs.emplace_back(i, j);
             }
         }
     }
-
-       // Print conflicting agent pairs
-    std::cout << "Conflicting Agent Pairs:" << std::endl;
-    for (const auto& pair : conflictingAgentPairs) {
-        std::cout << "(" << pair.first << ", " << pair.second << ")" << std::endl;
-    }
-
     return minimumVertexCover(conflictingAgentPairs);
-
 }
-*/
 
 std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName)
 {
@@ -402,11 +430,12 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
     CBSNode root = {
         0, 0, {}, {}, {}};
 
-
     // PARALLELIZE HERE
-    for (int a = 0; a < map.nAgents; a++) {
+    for (int a = 0; a < map.nAgents; a++)
+    {
         AStarPath path = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, root.constraints);
-        if (path.size() == 0) {
+        if (path.size() == 0)
+        {
             std::cerr << "No solutions!" << std::endl;
             return {};
         }
@@ -487,8 +516,8 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
                     break;
                     // std::cout << "Computed CG heuristic: " << qNode.heuristic << std::endl;
                 case DG:
-                    //qNode.heuristic = computeDGHeuristic(map, heuristics, qNode.constraints);
-                    //break;
+                    qNode.heuristic = computeDGHeuristic(map, qNode.constraints, qNode.paths, heuristics);
+                    break;
                     // std::cout << "Computed DG heuristic: " << qNode.heuristic << std::endl;
                 case WDG:
                     qNode.heuristic = 0;
