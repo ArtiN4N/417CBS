@@ -420,18 +420,6 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
     openList.push(root);
     nGenerated++;
 
-    for (auto &collision : root.collisions)
-    {
-        // std::pair<Constraint, Constraint> c = standardSplitting(collision);
-        // Constraint c1 = c.first;
-        // Constraint c2 = c.second;
-
-        // std::cout << "First constraint: ";
-        // printConstraint(c1);
-        // std::cout << "Second constraint: ";
-        // printConstraint(c2);
-    }
-
     uint maxPathLength = map.cols * map.rows * 10;
     uint maxIters = maxPathLength * 10 * map.nAgents;
     uint i = 0;
