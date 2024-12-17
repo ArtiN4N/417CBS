@@ -421,7 +421,7 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
     {
         bool operator()(const CBSNode &a, const CBSNode &b)
         {
-            return a.cost - a.heuristic > b.cost - b.heuristic;
+            return a.cost + a.heuristic > b.cost + b.heuristic;
         }
     };
 
