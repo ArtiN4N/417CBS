@@ -112,7 +112,7 @@ int minimumVertexCover(const std::vector<std::pair<int, int>> &edges)
     return bestCover.size();
 }
 
-int minimumWeightedVertexCover(std::vector<int>& HG, int nAgents) {
+int minimumWeighedVertexCover(const std::vector<std::pair<int, int>> &edges, int nAgents) {
     int ret = 0;
     std::vector<bool> finished(nAgents, false);
 
@@ -423,9 +423,7 @@ int computeWDGHeuristic(const Map &map, const std::vector<Constraint> &constrain
             }
         }
     }
-    return minimumVertexCover(conflictingAgentPairs);
-
-
+    return minimumWeightedVertexCover(conflictingAgentPairs, map.nAgents);
 }
 
 std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName)
