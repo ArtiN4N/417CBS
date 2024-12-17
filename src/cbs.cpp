@@ -60,7 +60,70 @@ HeuristicTable computeAstarHeuristics(AStarLocation goal, Map map) {
     return hTable;
 }
 
-ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable goalWalls) {
+AStarLocation move(AStarLocation location, uint dir) {
+    AStarLocation ret = location;
+    switch (dir) {
+        case 0:
+            ret.second--;
+            break;
+        case 1:
+            ret.first++;
+            break;
+        case 2:
+            ret.second++;
+            break;
+        case 3:
+            ret.first--;
+            break;
+        default:
+            break;
+    }
+
+    return ret;
+}
+
+uint getSumOfCost(std::vector<AStarPath> paths) {
+    uint ret = 0;
+    for (auto& path : paths) ret += path.size() - 1;
+    return ret;
+}
+
+AStarLocation getLocation(AStarPath path, uint timestep) {
+    if (timestep < 0) return path[0];
+    else if (timestep < path.size()) return path[timestep];
+    else return path[-1];
+}
+
+AStarPath getPath(AStarNode* goalNode) {
+    AStarPath path;
+    AStarNode* curr = goalNode;
+
+    while (curr != nullptr) {
+        path.push_back(curr->location);
+        curr = curr->parent;
+    }
+
+    std::reverse(path.begin(), path.end());
+    return path;
+}
+
+bool isConstrained(AStarLocation currentLoc, AStarLocation nextLoc, uint nextTime, ConstraintTable cTable) {
+    if (cTable.find(nextTime) == cTable.end()) return false;
+
+    for (auto& constraint : cTable[nextTime]) {
+        if (!constraint.isEdgeCollision) {
+            if (nextLoc == constraint.l1) return true;
+        } else {
+            bool def = currentLoc == constraint.l1 && nextLoc == constraint.l2;
+            bool opp = nextLoc == constraint.l1 && currentLoc == constraint.l2;
+            if (def || opp) return true;
+        }
+    }
+    
+    return false;
+}
+
+ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable& goalWalls) {
     ConstraintTable table;
     for (auto &constraint : constraints) {
         if (agent != constraint.agentId)
@@ -76,76 +139,6 @@ ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint a
     }
 
     return table;
-}
-
-bool isConstrained(AStarLocation currentLoc, AStarLocation nextLoc, uint nextTime, ConstraintTable cTable) {
-    if (cTable.find(nextTime) == cTable.end())
-        return false;
-
-    for (auto &constraint : cTable[nextTime]) {
-        if (!constraint.isEdgeCollision)
-            if (nextLoc == constraint.l1)
-                return true;
-        else {
-            bool def = currentLoc == constraint.l1 && nextLoc == constraint.l2;
-            bool opp = nextLoc == constraint.l1 && currentLoc == constraint.l2;
-            if (def || opp)
-                return true;
-        }
-    }
-
-    return false;
-}
-
-AStarLocation move(AStarLocation location, uint dir) {
-    AStarLocation ret = location;
-    switch (dir) {
-    case 0:
-        ret.second--;
-        break;
-    case 1:
-        ret.first++;
-        break;
-    case 2:
-        ret.second++;
-        break;
-    case 3:
-        ret.first--;
-        break;
-    default:
-        break;
-    }
-
-    return ret;
-}
-
-uint getSumOfCost(std::vector<AStarPath> paths) {
-    uint ret = 0;
-    for (auto &path : paths)
-        ret += path.size() - 1;
-    return ret;
-}
-
-AStarLocation getLocation(AStarPath path, uint timestep) {
-    if (timestep < 0)
-        return path[0];
-    else if (timestep < path.size())
-        return path[timestep];
-    else
-        return path[-1];
-}
-
-AStarPath getPath(AStarNode *goalNode) {
-    AStarPath path;
-    AStarNode *curr = goalNode;
-
-    while (curr != nullptr) {
-        path.push_back(curr->location);
-        curr = curr->parent;
-    }
-
-    std::reverse(path.begin(), path.end());
-    return path;
 }
 
 std::pair<bool, Collision> detectCollision(AStarPath path1, AStarPath path2, uint id1, uint id2) {

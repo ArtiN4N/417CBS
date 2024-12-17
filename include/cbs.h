@@ -24,7 +24,7 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
 
 HeuristicTable computeAstarHeuristics(HeuristicType type, AStarLocation goal, Map map);
 
-ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable goalWalls);
+ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable& goalWalls);
 
 bool isConstrained(AStarLocation currentLoc, AStarLocation nextLoc, uint nextTime, ConstraintTable cTable);
 
