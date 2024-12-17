@@ -21,6 +21,12 @@
 #include "cbstools.h"
 #include "mdd.h"
 
-std::vector<AStarPath> findSolution(
-    Map map, HeuristicType type, std::string experimentName, bool PARALLELIZE = false, uint NTHREADS = 1
-);
+std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName);
+
+HeuristicTable computeAstarHeuristics(HeuristicType type, AStarLocation goal, Map map);
+
+ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable& goalWalls);
+
+bool isConstrained(AStarLocation currentLoc, AStarLocation nextLoc, uint nextTime, ConstraintTable cTable);
+
+AStarLocation move(AStarLocation location, uint dir);
