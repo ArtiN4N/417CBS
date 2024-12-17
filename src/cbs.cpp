@@ -1,176 +1,7 @@
 #include "../include/cbs.h"
-#include "../include/mdd.h"
 
-
-void printAStarPath(AStarPath path)
-{
-    uint ret = 0;
-    for (auto loc : path)
-        std::cout << "(" << loc.second << "," << loc.first << ")->";
-    std::cout << std::endl;
-}
-
-AStarLocation move(AStarLocation location, uint dir)
-{
-    AStarLocation ret = location;
-    switch (dir)
-    {
-    case 0:
-        ret.second--;
-        break;
-    case 1:
-        ret.first++;
-        break;
-    case 2:
-        ret.second++;
-        break;
-    case 3:
-        ret.first--;
-        break;
-    default:
-        break;
-    }
-
-    return ret;
-}
-
-uint getSumOfCost(std::vector<AStarPath> paths)
-{
-    uint ret = 0;
-    for (auto &path : paths)
-        ret += path.size() - 1;
-    return ret;
-}
-
-ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable goalWalls)
-{
-    ConstraintTable table;
-    for (auto &constraint : constraints)
-    {
-        if (agent != constraint.agentId)
-            continue;
-
-        uint cTimestep = constraint.timeStep;
-        CollisionLocation cLocation = constraint.location;
-
-        if (constraint.isGoalWall)
-            goalWalls[cLocation.l1] = cTimestep;
-
-        table[cTimestep].push_back(cLocation);
-    }
-
-    return table;
-}
-
-AStarLocation getLocation(AStarPath path, uint timestep)
-{
-    if (timestep < 0)
-        return path[0];
-    else if (timestep < path.size())
-        return path[timestep];
-    else
-        return path[-1];
-}
-
-AStarPath getPath(AStarNode *goalNode)
-{
-    AStarPath path;
-    AStarNode *curr = goalNode;
-
-    while (curr != nullptr)
-    {
-        path.push_back(curr->location);
-        curr = curr->parent;
-    }
-
-    std::reverse(path.begin(), path.end());
-    return path;
-}
-
-bool isConstrained(AStarLocation currentLoc, AStarLocation nextLoc, uint nextTime, ConstraintTable cTable)
-{
-    if (cTable.find(nextTime) == cTable.end())
-        return false;
-
-    for (auto &constraint : cTable[nextTime])
-    {
-        if (!constraint.isEdgeCollision)
-        {
-            if (nextLoc == constraint.l1)
-                return true;
-        }
-        else
-        {
-            bool def = currentLoc == constraint.l1 && nextLoc == constraint.l2;
-            bool opp = nextLoc == constraint.l1 && currentLoc == constraint.l2;
-            if (def || opp)
-                return true;
-        }
-    }
-
-    return false;
-}
-
-std::pair<bool, Collision> detectCollision(AStarPath path1, AStarPath path2, uint id1, uint id2)
-{
-    Collision ret = {};
-    bool valid = false;
-
-    AStarLocation lastPath1 = getLocation(path1, 0);
-    AStarLocation lastPath2 = getLocation(path2, 0);
-
-    for (uint t = 0; t < std::max(path1.size(), path2.size()); t++)
-    {
-        bool collision = getLocation(path1, t) == lastPath2 && getLocation(path2, t) == lastPath1;
-        if (t < std::min(path1.size(), path2.size()) && collision)
-        {
-            ret = Collision{
-                id1, id2,
-                CollisionLocation{getLocation(path1, t), true, getLocation(path2, t)},
-                t, false};
-            valid = true;
-            break;
-        }
-
-        if (t < path1.size())
-            lastPath1 = getLocation(path1, t);
-        AStarLocation loc1 = lastPath1;
-
-        if (t < path2.size())
-            lastPath2 = getLocation(path2, t);
-        AStarLocation loc2 = lastPath2;
-
-        if (loc1 == loc2)
-        {
-            ret = Collision{
-                id1, id2,
-                CollisionLocation{loc1, false, {}},
-                t, false};
-            valid = true;
-            break;
-        }
-    }
-
-    return std::make_pair(valid, ret);
-}
-
-std::vector<Collision> detectCollisions(std::vector<AStarPath> paths)
-{
-    std::vector<Collision> ret;
-    for (int i = 0; i < paths.size(); i++)
-    {
-        for (int j = i + 1; j < paths.size(); j++)
-        {
-            if (i == j)
-                continue;
-            std::pair<bool, Collision> c = detectCollision(paths[i], paths[j], i, j);
-            if (c.first)
-                ret.push_back(c.second);
-        }
-    }
-
-    return ret;
-}
+bool PARALLELIZE = false;
+uint nThreads = 1;
 
 bool detectCardinalConflict(const MDD &mdd1, const MDD &mdd2)
 {
@@ -254,6 +85,7 @@ int minimumVertexCover(const std::vector<std::pair<int, int>> &edges)
     return bestCover.size();
 }
 
+/*
 int minimumWeightedVertexCover(std::vector<int>& HG, int nAgents) {
     int ret = 0;
     std::vector<bool> finished(nAgents, false);
@@ -267,156 +99,9 @@ int minimumWeightedVertexCover(std::vector<int>& HG, int nAgents) {
     }
     return ret;
 }
+*/
 
-std::pair<Constraint, Constraint> standardSplitting(Collision c)
-{
-    uint a1 = c.agentId;
-    uint a2 = c.agentId2;
-    CollisionLocation location = c.location;
-    uint timeStep = c.timeStep;
-
-    if (!location.isEdgeCollision)
-        return std::make_pair(
-            Constraint{a1, location, timeStep, false},
-            Constraint{a2, location, timeStep, false});
-    else
-        return std::make_pair(
-            Constraint{a1, location, timeStep, false},
-            Constraint{a2, CollisionLocation{location.l2, true, location.l1}, timeStep, false});
-}
-
-bool compareAStarNodes(AStarNode n1, AStarNode n2)
-{
-    return n1.gval + n1.hval < n2.gval + n2.hval;
-}
-
-AStarPath aStar(
-    Map map, AStarLocation startLoc, AStarLocation goalLoc,
-    HeuristicTable hTable, uint agent, std::vector<Constraint> constraints)
-{
-
-    struct CompareANode
-    {
-        bool operator()(const AStarNode *a, const AStarNode *b)
-        {
-            return a->gval + a->hval > b->gval + b->hval;
-        }
-    };
-
-    std::priority_queue<int, std::vector<AStarNode *>, CompareANode> openList;
-    std::unordered_map<std::pair<AStarLocation, uint>, AStarNode, PairHash> closedList;
-
-    GoalWallTable goalWalls;
-
-    uint hValue = hTable[startLoc];
-
-    ConstraintTable cTable = buildConstraintTable(constraints, agent, goalWalls);
-    uint maxTimestep = 0;
-
-    for (auto &pair : cTable)
-    {
-        uint timeStep = pair.first;
-        auto constraints = pair.second;
-
-        for (auto &constraint : constraints)
-        {
-            bool isVertex = !constraint.isEdgeCollision;
-            bool constraintAtGoal = constraint.l1 == goalLoc;
-            if (isVertex && constraintAtGoal)
-                if (timeStep > maxTimestep)
-                    maxTimestep = timeStep;
-        }
-    }
-
-    uint terminateTimestep = map.cols * map.rows;
-    if (goalWalls.size() > 0)
-    {
-        int max_value = std::max_element(
-                            goalWalls.begin(), goalWalls.end(),
-                            [](const auto &a, const auto &b)
-                            {
-                                return a.second < b.second;
-                            })
-                            ->second;
-        terminateTimestep += max_value + 1;
-    }
-
-    AStarNode root = {startLoc, 0, hValue, nullptr, 0};
-    closedList[std::make_pair(startLoc, 0)] = root;
-    AStarNode *nodePtr = &closedList[std::make_pair(startLoc, 0)];
-    openList.push(nodePtr);
-
-    while (openList.size() > 0)
-    {
-        AStarNode *curr = openList.top();
-        openList.pop();
-
-        if (curr->location == goalLoc && curr->timeStep >= maxTimestep)
-            return getPath(curr);
-
-        for (int i = 0; i < 5; i++)
-        {
-            // cast int to ordered enum
-            uint dir = i;
-
-            bool wrongNorth = dir == 0 && curr->location.second == 0;
-            bool wrongEast = dir == 1 && curr->location.first == map.cols - 1;
-            bool wrongSouth = dir == 2 && curr->location.second == map.rows - 1;
-            bool wrongWest = dir == 3 && curr->location.first == 0;
-
-            if (wrongNorth || wrongEast || wrongSouth || wrongWest)
-                continue;
-
-            AStarLocation childLoc;
-
-            if (i == 4)
-                childLoc = curr->location;
-            else
-                childLoc = move(curr->location, dir);
-
-            uint childTime = curr->timeStep + 1;
-
-            if (childTime > terminateTimestep)
-                continue;
-
-            if (isConstrained(curr->location, childLoc, childTime, cTable))
-                continue;
-
-            if (map.tiles[childLoc.first][childLoc.second])
-                continue;
-
-            if (goalWalls.find(childLoc) != goalWalls.end())
-                if (goalWalls[childLoc] <= childTime)
-                    continue;
-
-            AStarNode child = {
-                childLoc,
-                curr->gval + 1, hTable[childLoc],
-                curr,
-                childTime};
-
-            if (closedList.find(std::make_pair(childLoc, childTime)) != closedList.end())
-            {
-                AStarNode existingNode = closedList[std::make_pair(childLoc, childTime)];
-                if (compareAStarNodes(child, existingNode))
-                {
-                    closedList[std::make_pair(childLoc, childTime)] = child;
-                    AStarNode *nodePtr = &closedList[std::make_pair(childLoc, childTime)];
-                    openList.push(nodePtr);
-                }
-            }
-            else
-            {
-                closedList[std::make_pair(childLoc, childTime)] = child;
-                AStarNode *nodePtr = &closedList[std::make_pair(childLoc, childTime)];
-                openList.push(nodePtr);
-            }
-        }
-    }
-
-    return {};
-}
-
+/*
 std::vector<AStarPath> aStarforHeurs(
     Map map, AStarLocation startLoc, AStarLocation goalLoc,
     HeuristicTable hTable, uint agent, std::vector<Constraint> constraints)
@@ -580,112 +265,7 @@ std::vector<AStarPath> aStarforHeurs(
     }
 
     return shortestPaths;
-}
-
-void printCollisionLocation(CollisionLocation l)
-{
-    std::cout << "[ (" << l.l1.first << "," << l.l1.second << ")";
-    if (l.isEdgeCollision)
-    {
-        std::cout << ", (" << l.l2.first << "," << l.l2.second << ")";
-    }
-    std::cout << " ]";
-}
-
-void printConstraint(Constraint c)
-{
-    std::cout << " id=" << c.agentId << " time=" << c.timeStep << " location=";
-    printCollisionLocation(c.location);
-    std::cout << std::endl;
-}
-
-void printResults(std::vector<AStarPath> paths, uint nExpanded, uint nGenerated, double elapsed, std::string filename) {
-
-    std::ofstream file;
-
-    std::string text = std::to_string(elapsed) + "," + std::to_string(getSumOfCost(paths));
-
-    file.open("autotest/tests/" + filename, std::ios::app); // open to append mode
-    file << text << std::endl;
-    file.close();
-
-    //std::cout << "Found a solution!" << std::endl;
-    //std::cout << "Time elapsed : " << elapsed << std::endl;
-    //std::cout << "Sum of costs : " << getSumOfCost(paths) << std::endl;
-    //std::cout << "Expanded nodes : " << nExpanded << std::endl;
-    //std::cout << "Generated nodes : " << nGenerated << std::endl;
-}
-
-HeuristicTable computeAstarHeuristics(AStarLocation goal, Map map)
-{
-    struct HNode
-    {
-        AStarLocation location;
-        uint cost;
-    };
-
-    struct CompareHNode
-    {
-        bool operator()(const HNode &a, const HNode &b)
-        {
-            return a.cost > b.cost;
-        }
-    };
-
-    std::priority_queue<int, std::vector<HNode>, CompareHNode> openList;
-    std::unordered_map<AStarLocation, HNode, PairHash> closedList;
-
-    HNode root = {goal, 0};
-    openList.push(root);
-    closedList[goal] = root;
-
-    while (openList.size() > 0)
-    {
-        HNode curr = openList.top();
-        openList.pop();
-
-        for (int i = 0; i < 4; i++)
-        {
-            // cast int to ordered enum
-            uint dir = i;
-
-            AStarLocation childLocation = move(curr.location, dir);
-            uint childCost = curr.cost + 1;
-
-            bool xBound = childLocation.first < 0 || childLocation.first >= map.cols;
-            bool yBound = childLocation.second < 0 || childLocation.second >= map.rows;
-            if (xBound || yBound)
-                continue;
-            if (map.tiles[childLocation.first][childLocation.second])
-                continue;
-
-            HNode child = {childLocation, childCost};
-            // closed already
-            if (closedList.find(childLocation) != closedList.end())
-            {
-                HNode exisitingNode = closedList[childLocation];
-                if (exisitingNode.cost > childCost)
-                {
-                    closedList[childLocation] = child;
-                    openList.push(child);
-                }
-            }
-            else
-            {
-                closedList[childLocation] = child;
-                openList.push(child);
-            }
-        }
-    }
-
-    HeuristicTable hTable;
-    for (auto &pair : closedList)
-    {
-        hTable[pair.first] = pair.second.cost;
-    }
-
-    return hTable;
-}
+}*/
 
 int computeCGHeuristic(const Map &map, const std::vector<Constraint> &constraints, const std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
 {
@@ -693,13 +273,16 @@ int computeCGHeuristic(const Map &map, const std::vector<Constraint> &constraint
     std::vector<MDD> mdds(map.nAgents); // Pre-allocate memory for MDDs
 
     // Create MDDs for all agents
+    // PARALLELIZE HERE
     for (int i = 0; i < map.nAgents; i++)
     {
         AStarPath pathi = paths[i];
         mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
     }
+    //////////////
 
     // Check for conflicts between agent pairs
+    // PARALLELIZE HERE
     for (size_t i = 0; i < map.nAgents; i++)
     {
         for (size_t j = i + 1; j < map.nAgents; j++)
@@ -711,6 +294,7 @@ int computeCGHeuristic(const Map &map, const std::vector<Constraint> &constraint
             }
         }
     }
+    ////////////
 
     // Compute the minimum vertex cover for the conflict graph
     return minimumVertexCover(conflictingAgentPairs);
@@ -781,10 +365,12 @@ int computeCGHeuristic(const Map &map, const std::vector<Constraint> &constraint
 std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName)
 {
     std::vector<HeuristicTable> heuristics;
+    // PARALLELIZE HERE
     for (int a = 0; a < map.nAgents; a++)
     {
         heuristics.push_back(computeAstarHeuristics(map.agents[a].goal, map));
     }
+    /////////////
 
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -813,16 +399,17 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
     CBSNode root = {
         0, 0, {}, {}, {}};
 
-    for (int a = 0; a < map.nAgents; a++)
-    {
+
+    // PARALLELIZE HERE
+    for (int a = 0; a < map.nAgents; a++) {
         AStarPath path = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, root.constraints);
-        if (path.size() == 0)
-        {
+        if (path.size() == 0) {
             std::cerr << "No solutions!" << std::endl;
             return {};
         }
         root.paths.push_back(path);
     }
+    ////////
 
     root.cost = getSumOfCost(root.paths);
     root.collisions = detectCollisions(root.paths);
@@ -832,9 +419,9 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
 
     for (auto &collision : root.collisions)
     {
-        std::pair<Constraint, Constraint> c = standardSplitting(collision);
-        Constraint c1 = c.first;
-        Constraint c2 = c.second;
+        // std::pair<Constraint, Constraint> c = standardSplitting(collision);
+        // Constraint c1 = c.first;
+        // Constraint c2 = c.second;
 
         // std::cout << "First constraint: ";
         // printConstraint(c1);
@@ -906,12 +493,15 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
                 { // Default case: no heuristic just proceed and h value will be left as 0
                 case CG:
                     qNode.heuristic = computeCGHeuristic(map, qNode.constraints, qNode.paths, heuristics);
+                    break;
                     // std::cout << "Computed CG heuristic: " << qNode.heuristic << std::endl;
                 case DG:
-                    // qNode.heuristic = computeDGHeuristic(map, heuristics, qNode.constraints);
+                    //qNode.heuristic = computeDGHeuristic(map, heuristics, qNode.constraints);
+                    //break;
                     // std::cout << "Computed DG heuristic: " << qNode.heuristic << std::endl;
                 case WDG:
                     qNode.heuristic = 0;
+                    break;
                 }
 
                 openList.push(qNode);

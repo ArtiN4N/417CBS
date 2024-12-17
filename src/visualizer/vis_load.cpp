@@ -76,14 +76,14 @@ void stepTimestep(Map& map, std::vector<AStarPath> soln, uint timestep) {
 }
 
 int main() {
-    HeuristicType type = CG;
+    HeuristicType type = DG;
 
     Map map = {};
     map.loadFromFile("instances/test_50.txt");
 
     map.printTiles();
 
-    std::vector<AStarPath> soln = findSolution(map, type);
+    std::vector<AStarPath> soln = findSolution(map, type, "useless.txt");
     
     uint windowWidth = map.cols * tileSize;
     uint windowHeight = map.rows * tileSize;
