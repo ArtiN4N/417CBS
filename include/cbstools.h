@@ -64,7 +64,7 @@ struct AStarNode
 
 HeuristicTable computeAstarHeuristics(AStarLocation goal, Map map);
 
-ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable goalWalls);
+//ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable& goalWalls);
 
 bool isConstrained(AStarLocation currentLoc, AStarLocation nextLoc, uint nextTime, ConstraintTable cTable);
 
@@ -84,10 +84,10 @@ std::pair<Constraint, Constraint> standardSplitting(Collision c);
 
 bool compareAStarNodes(AStarNode n1, AStarNode n2);
 
-AStarPath aStar(
+/*AStarPath aStar(
     Map map, AStarLocation startLoc, AStarLocation goalLoc,
     HeuristicTable hTable, uint agent, std::vector<Constraint> constraints
-);
+);*/
 
 void printAStarPath(AStarPath path);
 

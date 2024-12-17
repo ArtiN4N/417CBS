@@ -7,7 +7,7 @@
 
 #define tileSize 50
 
-#define speed .0334f
+float speed = 0.f;
 
 void drawMap(Map map) {
     Color wallColor = DARKGRAY;
@@ -93,11 +93,17 @@ int main() {
     float elapsed = 0.f;
     uint timestep = 0;
 
-    SetTargetFPS(30);
+    uint FPS = 60;
+
+    float interval = .25f;
+
+    speed = 1.f / ((float) FPS * interval);
+
+    SetTargetFPS(FPS);
     while (!WindowShouldClose()) {
         elapsed += GetFrameTime();
 
-        if (elapsed >= 1.f) {
+        if (elapsed >= interval) {
             timestep++;
             elapsed = 0.f;
             stepTimestep(map, soln, timestep);

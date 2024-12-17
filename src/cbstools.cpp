@@ -56,23 +56,7 @@ HeuristicTable computeAstarHeuristics(AStarLocation goal, Map map) {
     return hTable;
 }
 
-ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable goalWalls) {
-    ConstraintTable table;
-    for (auto &constraint : constraints) {
-        if (agent != constraint.agentId)
-            continue;
 
-        uint cTimestep = constraint.timeStep;
-        CollisionLocation cLocation = constraint.location;
-
-        if (constraint.isGoalWall)
-            goalWalls[cLocation.l1] = cTimestep;
-
-        table[cTimestep].push_back(cLocation);
-    }
-
-    return table;
-}
 
 bool isConstrained(AStarLocation currentLoc, AStarLocation nextLoc, uint nextTime, ConstraintTable cTable) {
     if (cTable.find(nextTime) == cTable.end())
@@ -131,7 +115,7 @@ AStarLocation getLocation(AStarPath path, uint timestep) {
         return path[-1];
 }
 
-AStarPath getPath(AStarNode *goalNode) {
+AStarPath getPath(AStarNode* goalNode) {
     AStarPath path;
     AStarNode *curr = goalNode;
 
@@ -225,122 +209,6 @@ bool compareAStarNodes(AStarNode n1, AStarNode n2) {
     return n1.gval + n1.hval < n2.gval + n2.hval;
 }
 
-AStarPath aStar(
-    Map map, AStarLocation startLoc, AStarLocation goalLoc,
-    HeuristicTable hTable, uint agent, std::vector<Constraint> constraints
-) {
-
-    struct CompareANode {
-        bool operator()(const AStarNode *a, const AStarNode *b) {
-            return a->gval + a->hval > b->gval + b->hval;
-        }
-    };
-
-    std::priority_queue<int, std::vector<AStarNode *>, CompareANode> openList;
-    std::unordered_map<std::pair<AStarLocation, uint>, AStarNode, PairHash> closedList;
-
-    GoalWallTable goalWalls;
-
-    uint hValue = hTable[startLoc];
-
-    ConstraintTable cTable = buildConstraintTable(constraints, agent, goalWalls);
-    uint maxTimestep = 0;
-
-    for (auto &pair : cTable) {
-        uint timeStep = pair.first;
-        auto constraints = pair.second;
-
-        for (auto &constraint : constraints) {
-
-            bool isVertex = !constraint.isEdgeCollision;
-            bool constraintAtGoal = constraint.l1 == goalLoc;
-
-            if (isVertex && constraintAtGoal)
-                if (timeStep > maxTimestep)
-                    maxTimestep = timeStep;
-        }
-    }
-
-    uint terminateTimestep = map.cols * map.rows;
-    if (goalWalls.size() > 0) {
-        int max_value = std::max_element(
-            goalWalls.begin(), goalWalls.end(),
-            [](const auto &a, const auto &b) {
-                return a.second < b.second;
-            }
-        )->second;
-        terminateTimestep += max_value + 1;
-    }
-
-    AStarNode root = {startLoc, 0, hValue, nullptr, 0};
-    closedList[std::make_pair(startLoc, 0)] = root;
-    AStarNode *nodePtr = &closedList[std::make_pair(startLoc, 0)];
-    openList.push(nodePtr);
-
-    while (openList.size() > 0) {
-        AStarNode *curr = openList.top();
-        openList.pop();
-
-        if (curr->location == goalLoc && curr->timeStep >= maxTimestep)
-            return getPath(curr);
-
-        for (int i = 0; i < 5; i++) {
-            // cast int to ordered enum
-            uint dir = i;
-
-            bool wrongNorth = dir == 0 && curr->location.second == 0;
-            bool wrongEast = dir == 1 && curr->location.first == map.cols - 1;
-            bool wrongSouth = dir == 2 && curr->location.second == map.rows - 1;
-            bool wrongWest = dir == 3 && curr->location.first == 0;
-
-            if (wrongNorth || wrongEast || wrongSouth || wrongWest)
-                continue;
-
-            AStarLocation childLoc;
-
-            if (i == 4)
-                childLoc = curr->location;
-            else
-                childLoc = move(curr->location, dir);
-
-            uint childTime = curr->timeStep + 1;
-
-            if (childTime > terminateTimestep)
-                continue;
-
-            if (isConstrained(curr->location, childLoc, childTime, cTable))
-                continue;
-
-            if (map.tiles[childLoc.first][childLoc.second])
-                continue;
-
-            if (goalWalls.find(childLoc) != goalWalls.end())
-                if (goalWalls[childLoc] <= childTime)
-                    continue;
-
-            AStarNode child = {
-                childLoc,
-                curr->gval + 1, hTable[childLoc],
-                curr,
-                childTime};
-
-            if (closedList.find(std::make_pair(childLoc, childTime)) != closedList.end()) {
-                AStarNode existingNode = closedList[std::make_pair(childLoc, childTime)];
-                if (compareAStarNodes(child, existingNode)) {
-                    closedList[std::make_pair(childLoc, childTime)] = child;
-                    AStarNode *nodePtr = &closedList[std::make_pair(childLoc, childTime)];
-                    openList.push(nodePtr);
-                }
-            } else {
-                closedList[std::make_pair(childLoc, childTime)] = child;
-                AStarNode *nodePtr = &closedList[std::make_pair(childLoc, childTime)];
-                openList.push(nodePtr);
-            }
-        }
-    }
-
-    return {};
-}
 
 void printAStarPath(AStarPath path) {
     uint ret = 0;

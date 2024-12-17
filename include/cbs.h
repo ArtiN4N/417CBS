@@ -18,6 +18,6 @@
 #include "dg.h"
 #include "wdg.h"
 
-#include "mdd.h"
-
 std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName);
+
+ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable& goalWalls);
