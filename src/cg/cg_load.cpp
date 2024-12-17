@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     std::string mapName = map.loadMapBoundsFromFile(number);
     for (int scen = 1; scen < 4; scen++) {
 
-        std::string experimentName = "map" + std::to_string(number) + "scen" + std::to_string(scen) + "threading" + argv[2] + ".out";
+        std::string experimentName = "map" + std::to_string(number) + "scen" + std::to_string(scen) + "t" + argv[2] + ".out";
         std::ifstream infile("autotest/tests/" + experimentName);
         if (infile) {
             // Clear file contents
