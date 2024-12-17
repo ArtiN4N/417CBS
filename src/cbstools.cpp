@@ -389,7 +389,34 @@ void computeParallelAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map
         heuristics.push_back(computeAstarHeuristics(map.agents[a].goal, map));
 }
 
-void computeAllAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, uint nAgents, bool parallel, uint nthreads) {
-    if (parallel) computeSerialAStarHeuristics(heuristics, map, nAgents);
-    else computeParallelAStarHeuristics(heuristics, map, nAgents);
+void computeAllAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, bool parallel, uint nthreads) {
+    if (parallel) computeSerialAStarHeuristics(heuristics, map, map.nAgents);
+    else computeParallelAStarHeuristics(heuristics, map, map.nAgents);
+}
+
+void computeSerialAgentPaths(Map map, std::vector<HeuristicTable> heuristics, CBSNode& root, uint nAgents) {
+    for (int a = 0; a < nAgents; a++) {
+        AStarPath path = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, root.constraints);
+        if (path.size() == 0)
+            std::cerr << "No solutions!" << std::endl;
+
+        root.paths.push_back(path);
+    }
+}
+
+void computeParallelAgentPaths(Map map, std::vector<HeuristicTable> heuristics, CBSNode& root, uint nAgents) {
+    // TO BE IMPLEMENTED
+    for (int a = 0; a < nAgents; a++) {
+        AStarPath path = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, root.constraints);
+        if (path.size() == 0)
+            std::cerr << "No solutions!" << std::endl;
+
+        root.paths.push_back(path);
+    }
+}
+
+
+void computeAllAgentPaths(Map map, std::vector<HeuristicTable> heuristics, CBSNode& root, bool parallel, uint nthreads) {
+    if (parallel) computeSerialAgentPaths(map, heuristics, root, map.nAgents);
+    else computeParallelAgentPaths(map, heuristics, root, map.nAgents);
 }

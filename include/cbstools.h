@@ -62,6 +62,20 @@ struct AStarNode
     uint timeStep;
 };
 
+struct CBSNode {
+    uint cost;
+    uint heuristic;
+    std::vector<Constraint> constraints;
+    std::vector<AStarPath> paths;
+    std::vector<Collision> collisions;
+};
+
+struct CompareCBSNode {
+    bool operator()(const CBSNode &a, const CBSNode &b) {
+        return a.cost - a.heuristic > b.cost - b.heuristic;
+    }
+};
+
 ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable goalWalls);
 
 bool isConstrained(AStarLocation currentLoc, AStarLocation nextLoc, uint nextTime, ConstraintTable cTable);
@@ -95,4 +109,6 @@ void printConstraint(Constraint c);
 
 void printResults(std::vector<AStarPath> paths, uint nExpanded, uint nGenerated, double elapsed, std::string filename);
 
-void computeAllAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, uint nAgents, bool parallel, uint nthreads);
+void computeAllAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, bool parallel, uint nthreads);
+
+void computeAllAgentPaths(Map map, std::vector<HeuristicTable> heuristics, CBSNode& root, bool parallel, uint nthreads);

@@ -371,46 +371,18 @@ std::vector<AStarPath> findSolution(
 ) {
     std::vector<HeuristicTable> heuristics;
 
-    computeAllAStarHeuristics(heuristics, map, map.nAgents, PARALLELIZE, NTHREADS);
+    computeAllAStarHeuristics(heuristics, map, PARALLELIZE, NTHREADS);
 
     auto start = std::chrono::high_resolution_clock::now();
 
     uint nGenerated = 0;
     uint nExpanded = 0;
 
-    struct CBSNode
-    {
-        uint cost;
-        uint heuristic;
-        std::vector<Constraint> constraints;
-        std::vector<AStarPath> paths;
-        std::vector<Collision> collisions;
-    };
-
-    struct CompareCBSNode
-    {
-        bool operator()(const CBSNode &a, const CBSNode &b)
-        {
-            return a.cost - a.heuristic > b.cost - b.heuristic;
-        }
-    };
-
     std::priority_queue<int, std::vector<CBSNode>, CompareCBSNode> openList;
 
-    CBSNode root = {
-        0, 0, {}, {}, {}};
+    CBSNode root = { 0, 0, {}, {}, {} };
 
-
-    // PARALLELIZE HERE
-    for (int a = 0; a < map.nAgents; a++) {
-        AStarPath path = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, root.constraints);
-        if (path.size() == 0) {
-            std::cerr << "No solutions!" << std::endl;
-            return {};
-        }
-        root.paths.push_back(path);
-    }
-    ////////
+    computeAllAgentPaths(map, heuristics, root, PARALLELIZE, NTHREADS);
 
     root.cost = getSumOfCost(root.paths);
     root.collisions = detectCollisions(root.paths);
