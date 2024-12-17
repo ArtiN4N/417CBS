@@ -28,7 +28,7 @@ WDG_EXE = -o bin/wdg_test
 cg_test:
 	$(CC) $(CG_SRC) $(SRC) $(CG_EXE) $(FLAG) $(INC)
 
-cg_test_l:
+cgl_test:
 	$(CC) $(CGL_SRC) $(SRC) $(CGL_EXE) $(FLAG) $(INC)
 
 dg_test:

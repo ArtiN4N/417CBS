@@ -1,5 +1,7 @@
 #include "../include/cbstools.h"
 
+#include <thread>
+
 HeuristicTable computeAstarHeuristics(AStarLocation goal, Map map) {
     struct HNode {
         AStarLocation location;
@@ -383,10 +385,26 @@ void computeSerialAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map m
         heuristics.push_back(computeAstarHeuristics(map.agents[a].goal, map));
 }
 
+void computeHeuristicForAgent(int start, int end, std::vector<Heuristic>& heuristics, Map& map) {
+    for (int a = start; a < end; a++) {
+        heuristics[a] = computeAstarHeuristics(map.agents[a].goal, map);
+    }
+}
+
 void computeParallelAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, uint nAgents, uint nthreads) {
-    // TO BE IMPLEMENTED
-    for (int a = 0; a < nAgents; a++)
-        heuristics.push_back(computeAstarHeuristics(map.agents[a].goal, map));
+    std::vector<std::thread> threads;
+
+    int agentsPerThread = std::ceil((float) nAgents / (float) nThreads);
+
+    for (int t = 0; t < nthreads; t++) {
+        int start = t * agentsPerThread;
+        int end = std::min((t + 1) * agentsPerThread, nAgents);
+        threads.push_back(std::thread(computeHeuristicForAgent, start, end, std::ref(map), std::ref(heuristics)));
+    }
+
+    for (auto& t : threads) {
+        t.join();
+    }
 }
 
 void computeAllAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, bool parallel, uint nthreads) {

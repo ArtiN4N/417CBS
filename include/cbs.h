@@ -11,13 +11,14 @@
 #include <string>
 
 #include "defs.h"
-#include "cbstools.h"
+
 
 #include "map.h"
 #include "cg.h"
 #include "dg.h"
 #include "wdg.h"
 
+#include "cbstools.h"
 #include "mdd.h"
 
 std::vector<AStarPath> findSolution(
