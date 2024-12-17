@@ -3,6 +3,11 @@
 #include <algorithm>
 #include <queue>
 #include <chrono>
+#include <climits>
+#include <set>
+
+
+
 
 #include "defs.h"
 
@@ -55,3 +60,9 @@ struct AStarNode {
 std::vector<AStarPath> findSolution(Map map, HeuristicType type);
 
 HeuristicTable computeHeuristics(HeuristicType type, AStarLocation goal, Map map);
+
+ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable goalWalls);
+
+bool isConstrained(AStarLocation currentLoc, AStarLocation nextLoc, uint nextTime, ConstraintTable cTable);
+
+AStarLocation move(AStarLocation location, uint dir);

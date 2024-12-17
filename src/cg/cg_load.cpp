@@ -5,10 +5,10 @@
 #include "../../include/cbs.h"
 
 int main() {
-    HeuristicType type = CG;
-
+    HeuristicType type = DG;
+ 
     Map map = {};
-    map.loadFromFile("instances/test.txt");
+    map.loadFromFile("instances/test_44.txt");
 
     map.printTiles();
 
