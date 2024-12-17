@@ -12,7 +12,9 @@ VIS_TEST_LIB_LIN = -L lib/ -lraylibl -lm -lpthread -ldl -lrt
 FLAG = -std=c++14 -O3 -pthread
 
 CG_SRC = src/cg/cg_load.cpp
+CGL_SRC = src/cg/cg_test_load.cpp
 CG_EXE = -o bin/cg_test
+CGL_EXE = -o bin/cgl_test
 
 DG_SRC = src/dg/dg_load.cpp
 DG_EXE = -o bin/dg_test
@@ -23,6 +25,9 @@ WDG_EXE = -o bin/wdg_test
 
 cg_test:
 	$(CC) $(CG_SRC) $(SRC) $(CG_EXE) $(FLAG) $(INC)
+
+cg_test_l:
+	$(CC) $(CGL_SRC) $(SRC) $(CGL_EXE) $(FLAG) $(INC)
 
 dg_test:
 	$(CC) $(DG_SRC) $(SRC) $(DG_EXE) $(FLAG) $(INC)

@@ -40,9 +40,9 @@ void Map::loadFromFile(std::string path) {
         uint start_x, start_y, goal_x, goal_y;
         file >> start_y >> start_x >> goal_y >> goal_x;
 
-        agents[a] = Agent(start_x, start_y, goal_x, goal_y);
-        starts[a] = std::make_pair(start_x, start_y);
-        goals[a] = std::make_pair(goal_x, goal_y);
+        agents.push_back(Agent(start_x, start_y, goal_x, goal_y));
+        starts.push_back(std::make_pair(start_x, start_y));
+        goals.push_back(std::make_pair(goal_x, goal_y));
     }
 
     file.close();
