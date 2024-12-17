@@ -5,6 +5,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <vector>
 
 struct Agent {
     AStarLocation start;
@@ -23,14 +24,18 @@ struct Map {
     bool** tiles;
 
     uint nAgents;
-    Agent* agents;
+    std::vector<Agent> agents;
 
-    AStarLocation* starts;
-    AStarLocation* goals;
+    std::vector<AStarLocation> starts;
+    std::vector<AStarLocation> goals;
 
     bool loaded;
 
     void loadFromFile(std::string path);
+    std::string loadMapBoundsFromFile(int mapFile);
+    void addAgentFromLine(std::string line);
+    void initAgents();
+    void resetAgents();
     void destroy();
 
     void printTiles();
