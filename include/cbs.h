@@ -21,3 +21,4 @@
 #include "mdd.h"
 
 std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName);
+int minimumWeightedVertexCover(std::vector<int>& HG, int nAgents);

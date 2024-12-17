@@ -112,7 +112,6 @@ int minimumVertexCover(const std::vector<std::pair<int, int>> &edges)
     return bestCover.size();
 }
 
-/*
 int minimumWeightedVertexCover(std::vector<int>& HG, int nAgents) {
     int ret = 0;
     std::vector<bool> finished(nAgents, false);
@@ -126,7 +125,6 @@ int minimumWeightedVertexCover(std::vector<int>& HG, int nAgents) {
     }
     return ret;
 }
-*/
 
 /*
 std::vector<AStarPath> aStarforHeurs(
@@ -393,6 +391,43 @@ int computeDGHeuristic(const Map &map, const std::vector<Constraint> &constraint
     return minimumVertexCover(conflictingAgentPairs);
 }
 
+int computeWDGHeuristic(const Map &map, const std::vector<Constraint> &constraints, const std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
+{
+    std::vector<std::pair<int, int>> conflictingAgentPairs;
+    std::vector<int> weights;
+    std::vector<MDD> mdds(map.nAgents);
+
+    // Create MDDs for all agents
+    for (int i = 0; i < map.nAgents; i++)
+    {
+        AStarPath pathi = paths[i];
+        mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
+    }
+
+    for (size_t i = 0; i < map.nAgents; i++)
+    {
+        for (size_t j = i + 1; j < map.nAgents; j++)
+        {
+            if (detectCardinalConflict(mdds[i], mdds[j]))
+            {
+                // Same check as DG, but we need to get weights
+                int weight = getSumOfCost({paths[i], paths[j]});
+                conflictingAgentPairs.emplace_back(i, j);
+                weights.push_back(weight);
+            }
+            else if (detectDependency(mdds[i], mdds[j]))
+            { // explicitly check for dependency
+                int weight = getSumOfCost({paths[i], paths[j]}) / 2;
+                conflictingAgentPairs.emplace_back(i, j);
+                weights.push_back(weight);
+            }
+        }
+    }
+    return minimumVertexCover(conflictingAgentPairs);
+
+
+}
+
 std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName)
 {
     std::vector<HeuristicTable> heuristics;
@@ -520,7 +555,7 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
                     break;
                     // std::cout << "Computed DG heuristic: " << qNode.heuristic << std::endl;
                 case WDG:
-                    qNode.heuristic = 0;
+                    qNode.heuristic = computeWDGHeuristic(map, qNode.constraints, qNode.paths, heuristics);
                     break;
                 }
 

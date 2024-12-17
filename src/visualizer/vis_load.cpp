@@ -76,7 +76,7 @@ void stepTimestep(Map& map, std::vector<AStarPath> soln, uint timestep) {
 }
 
 int main() {
-    HeuristicType type = DG;
+    HeuristicType type = WDG;
 
     Map map = {};
     map.loadFromFile("instances/test_50.txt");
