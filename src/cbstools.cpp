@@ -383,15 +383,15 @@ void computeSerialAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map m
         heuristics.push_back(computeAstarHeuristics(map.agents[a].goal, map));
 }
 
-void computeParallelAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, uint nAgents) {
+void computeParallelAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, uint nAgents, uint nthreads) {
     // TO BE IMPLEMENTED
     for (int a = 0; a < nAgents; a++)
         heuristics.push_back(computeAstarHeuristics(map.agents[a].goal, map));
 }
 
 void computeAllAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, bool parallel, uint nthreads) {
-    if (parallel) computeSerialAStarHeuristics(heuristics, map, map.nAgents);
-    else computeParallelAStarHeuristics(heuristics, map, map.nAgents);
+    if (parallel) computeParallelAStarHeuristics(heuristics, map, map.nAgents, nthreads);
+    else computeSerialAStarHeuristics(heuristics, map, map.nAgents);
 }
 
 void computeSerialAgentPaths(Map map, std::vector<HeuristicTable> heuristics, CBSNode& root, uint nAgents) {
@@ -404,7 +404,7 @@ void computeSerialAgentPaths(Map map, std::vector<HeuristicTable> heuristics, CB
     }
 }
 
-void computeParallelAgentPaths(Map map, std::vector<HeuristicTable> heuristics, CBSNode& root, uint nAgents) {
+void computeParallelAgentPaths(Map map, std::vector<HeuristicTable> heuristics, CBSNode& root, uint nAgents, uint nthreads) {
     // TO BE IMPLEMENTED
     for (int a = 0; a < nAgents; a++) {
         AStarPath path = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, root.constraints);
@@ -417,6 +417,6 @@ void computeParallelAgentPaths(Map map, std::vector<HeuristicTable> heuristics, 
 
 
 void computeAllAgentPaths(Map map, std::vector<HeuristicTable> heuristics, CBSNode& root, bool parallel, uint nthreads) {
-    if (parallel) computeSerialAgentPaths(map, heuristics, root, map.nAgents);
-    else computeParallelAgentPaths(map, heuristics, root, map.nAgents);
+    if (parallel) computeParallelAgentPaths(map, heuristics, root, map.nAgents, nthreads);
+    else computeSerialAgentPaths(map, heuristics, root, map.nAgents);
 }

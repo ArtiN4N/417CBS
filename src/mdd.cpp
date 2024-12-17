@@ -182,3 +182,120 @@ void MDD::printMDD() const
         }
     }
 }
+
+
+bool detectCardinalConflict(const MDD &mdd1, const MDD &mdd2)
+{
+    int levels = std::min(mdd1.locsAtTime.size(), mdd2.locsAtTime.size());
+
+    for (int level = 0; level < levels; ++level)
+    {
+        // Get the list of nodes at the current level for both MDDs
+        const std::list<MDDNode *> &nodes1 = mdd1.locsAtTime[level];
+        const std::list<MDDNode *> &nodes2 = mdd2.locsAtTime[level];
+
+        // Check if both levels have exactly one node
+        if (nodes1.size() == 1 && nodes2.size() == 1)
+        {
+            // Retrieve the single nodes
+            MDDNode *node1 = nodes1.front();
+            MDDNode *node2 = nodes2.front();
+
+            AStarLocation loc1 = node1->location;
+            AStarLocation loc2 = node2->location;
+
+            // Compare their locations at the same time
+            if (loc1 == loc2)
+            {
+                return true; // Cardinal conflict detected
+            }
+
+            // Check for edge collision (starting from level 1)
+            if (level > 0)
+            {
+                // Get the previous level's locations for both MDDs
+                const std::list<MDDNode *> &prevNodes1 = mdd1.locsAtTime[level - 1];
+                const std::list<MDDNode *> &prevNodes2 = mdd2.locsAtTime[level - 1];
+
+                // Ensure both previous levels also have exactly one node
+                if (prevNodes1.size() == 1 && prevNodes2.size() == 1)
+                {
+                    MDDNode *prevNode1 = prevNodes1.front();
+                    MDDNode *prevNode2 = prevNodes2.front();
+
+                    AStarLocation prevLoc1 = prevNode1->location;
+                    AStarLocation prevLoc2 = prevNode2->location;
+
+                    // Detect edge collision
+                    if (prevLoc1 == loc2 && prevLoc2 == loc1)
+                    {
+                        return true; // Edge conflict detected
+                    }
+                }
+            }
+        }
+    }
+
+    // No cardinal or edge conflict found
+    return false;
+}
+
+void createSerialMDDs(
+	std::vector<MDD>& mdds, std::vector<AStarPath> &paths,
+	std::vector<Constraint> &constraints, Map &map, std::vector<HeuristicTable> heuristics,
+    uint nAgents
+) {
+    for (int i = 0; i < nAgents; i++) {
+        AStarPath pathi = paths[i];
+        mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
+    }
+}
+
+void createParallelMDDs(
+	std::vector<MDD>& mdds, std::vector<AStarPath> &paths,
+	std::vector<Constraint> &constraints, Map &map, std::vector<HeuristicTable> heuristics,
+    uint nAgents, uint nthreads
+) {
+    for (int i = 0; i < nAgents; i++) {
+        AStarPath pathi = paths[i];
+        mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
+    }
+}
+
+void createAllMDDs(
+	std::vector<MDD>& mdds, std::vector<AStarPath> &paths,
+	std::vector<Constraint> &constraints, Map &map, std::vector<HeuristicTable> heuristics,
+    bool parallel, uint nthreads
+) {
+    if (parallel) createParallelMDDs(mdds, paths, constraints, map, heuristics, map.nAgents, nthreads);
+    else createSerialMDDs(mdds, paths, constraints, map, heuristics, map.nAgents);
+}
+
+void grabSerialConflictingPairs(
+    std::vector<MDD>& mdds, Map& map, std::vector<std::pair<int, int>>& conflictingAgentPairs, uint nAgents
+) {
+    for (size_t i = 0; i < nAgents; i++) {
+        for (size_t j = i + 1; j < nAgents; j++) {
+            if (detectCardinalConflict(mdds[i], mdds[j]))
+                conflictingAgentPairs.emplace_back(i, j);
+        }
+    }
+}
+
+void grabParallelConflictingPairs(
+    std::vector<MDD>& mdds, Map& map, std::vector<std::pair<int, int>>& conflictingAgentPairs, uint nAgents, uint nthreads
+) {
+    for (size_t i = 0; i < nAgents; i++) {
+        for (size_t j = i + 1; j < nAgents; j++) {
+            if (detectCardinalConflict(mdds[i], mdds[j]))
+                conflictingAgentPairs.emplace_back(i, j);
+        }
+    }
+}
+
+void grabAllConflictingPairs(
+    std::vector<MDD>& mdds, Map& map, std::vector<std::pair<int, int>>& conflictingAgentPairs, bool parallel, uint nthreads
+) {
+    if (parallel) grabParallelConflictingPairs(mdds, map, conflictingAgentPairs, map.nAgents, nthreads);
+    else grabSerialConflictingPairs(mdds, map, conflictingAgentPairs, map.nAgents);
+}

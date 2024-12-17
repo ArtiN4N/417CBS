@@ -3,62 +3,6 @@
 bool PARALLELIZE = false;
 uint NTHREADS = 1;
 
-bool detectCardinalConflict(const MDD &mdd1, const MDD &mdd2)
-{
-    int levels = std::min(mdd1.locsAtTime.size(), mdd2.locsAtTime.size());
-
-    for (int level = 0; level < levels; ++level)
-    {
-        // Get the list of nodes at the current level for both MDDs
-        const std::list<MDDNode *> &nodes1 = mdd1.locsAtTime[level];
-        const std::list<MDDNode *> &nodes2 = mdd2.locsAtTime[level];
-
-        // Check if both levels have exactly one node
-        if (nodes1.size() == 1 && nodes2.size() == 1)
-        {
-            // Retrieve the single nodes
-            MDDNode *node1 = nodes1.front();
-            MDDNode *node2 = nodes2.front();
-
-            AStarLocation loc1 = node1->location;
-            AStarLocation loc2 = node2->location;
-
-            // Compare their locations at the same time
-            if (loc1 == loc2)
-            {
-                return true; // Cardinal conflict detected
-            }
-
-            // Check for edge collision (starting from level 1)
-            if (level > 0)
-            {
-                // Get the previous level's locations for both MDDs
-                const std::list<MDDNode *> &prevNodes1 = mdd1.locsAtTime[level - 1];
-                const std::list<MDDNode *> &prevNodes2 = mdd2.locsAtTime[level - 1];
-
-                // Ensure both previous levels also have exactly one node
-                if (prevNodes1.size() == 1 && prevNodes2.size() == 1)
-                {
-                    MDDNode *prevNode1 = prevNodes1.front();
-                    MDDNode *prevNode2 = prevNodes2.front();
-
-                    AStarLocation prevLoc1 = prevNode1->location;
-                    AStarLocation prevLoc2 = prevNode2->location;
-
-                    // Detect edge collision
-                    if (prevLoc1 == loc2 && prevLoc2 == loc1)
-                    {
-                        return true; // Edge conflict detected
-                    }
-                }
-            }
-        }
-    }
-
-    // No cardinal or edge conflict found
-    return false;
-}
-
 // Check if a set of vertices form a vertex cover
 bool isVertexCover(const std::vector<std::pair<int, int>> &edges, const std::set<int> &vertices)
 {
@@ -294,34 +238,16 @@ std::vector<AStarPath> aStarforHeurs(
     return shortestPaths;
 }*/
 
-int computeCGHeuristic(const Map &map, const std::vector<Constraint> &constraints, const std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
+int computeCGHeuristic(Map &map, std::vector<Constraint> &constraints, std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
 {
     std::vector<std::pair<int, int>> conflictingAgentPairs;
     std::vector<MDD> mdds(map.nAgents); // Pre-allocate memory for MDDs
 
     // Create MDDs for all agents
-    // PARALLELIZE HERE
-    for (int i = 0; i < map.nAgents; i++)
-    {
-        AStarPath pathi = paths[i];
-        mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
-    }
-    //////////////
+    createAllMDDs(mdds, paths, constraints, map, heuristics, PARALLELIZE, NTHREADS);
 
     // Check for conflicts between agent pairs
-    // PARALLELIZE HERE
-    for (size_t i = 0; i < map.nAgents; i++)
-    {
-        for (size_t j = i + 1; j < map.nAgents; j++)
-        {
-            if (detectCardinalConflict(mdds[i], mdds[j]))
-            {
-                // Store the pair of conflicting agents
-                conflictingAgentPairs.emplace_back(i, j);
-            }
-        }
-    }
-    ////////////
+    grabAllConflictingPairs(mdds, map, conflictingAgentPairs, PARALLELIZE, NTHREADS);
 
     // Compute the minimum vertex cover for the conflict graph
     return minimumVertexCover(conflictingAgentPairs);
@@ -395,8 +321,12 @@ int computeDGHeuristic(const Map &map, const std::vector<Constraint> &constraint
 
 std::vector<AStarPath> findSolution(
     Map map, HeuristicType type, std::string experimentName,
-    bool PARALLELIZE, uint NTHREADS
+    bool parallel, uint nthreads
 ) {
+
+    PARALLELIZE = parallel;
+    NTHREADS = nthreads;
+
     std::vector<HeuristicTable> heuristics;
 
     computeAllAStarHeuristics(heuristics, map, PARALLELIZE, NTHREADS);
