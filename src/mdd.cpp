@@ -22,10 +22,22 @@ int MDD::createMDD(ConstraintTable cTable, Agent agent1, Map map){
     MDDNode *root = new MDDNode(nullptr, agent1.start);
     openList.push(root);
 	closedList.push_back(root);
+    this->startNode = agent1.start;
+    this->goalNode = agent1.goal;
     while(openList.size() > 0){
         MDDNode *curr = openList.front();
         openList.pop();
-        
+        if(curr->timestep = this->maxTimestep){
+            // This  means we are at our last item in the MDD
+            mddLayers[maxTimestep].push_back(curr);
+            if(!(openList.empty())){
+                return 1;
+            }
+        }
+        int minimumCost;
+        for(int i = 0; i <= 4; i ++){
+
+        }
     }
 
 }
