@@ -6,9 +6,9 @@
 
 int main() {
     HeuristicType type = CG;
-
+ 
     Map map = {};
-    map.loadFromFile("instances/test.txt");
+    map.loadFromFile("instances/custom.txt");
 
     map.printTiles();
 
