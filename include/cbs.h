@@ -20,4 +20,6 @@
 
 #include "mdd.h"
 
-std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName);
+std::vector<AStarPath> findSolution(
+    Map map, HeuristicType type, std::string experimentName, bool PARALLELIZE = false, uint NTHREADS = 1
+);

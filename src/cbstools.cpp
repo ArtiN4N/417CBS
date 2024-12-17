@@ -377,3 +377,19 @@ void printResults(std::vector<AStarPath> paths, uint nExpanded, uint nGenerated,
     //std::cout << "Expanded nodes : " << nExpanded << std::endl;
     //std::cout << "Generated nodes : " << nGenerated << std::endl;
 }
+
+void computeSerialAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, uint nAgents) {
+    for (int a = 0; a < nAgents; a++)
+        heuristics.push_back(computeAstarHeuristics(map.agents[a].goal, map));
+}
+
+void computeParallelAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, uint nAgents) {
+    // TO BE IMPLEMENTED
+    for (int a = 0; a < nAgents; a++)
+        heuristics.push_back(computeAstarHeuristics(map.agents[a].goal, map));
+}
+
+void computeAllAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, uint nAgents, bool parallel, uint nthreads) {
+    if (parallel) computeSerialAStarHeuristics(heuristics, map, nAgents);
+    else computeParallelAStarHeuristics(heuristics, map, nAgents);
+}

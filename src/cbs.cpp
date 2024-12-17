@@ -1,7 +1,7 @@
 #include "../include/cbs.h"
 
 bool PARALLELIZE = false;
-uint nThreads = 1;
+uint NTHREADS = 1;
 
 bool detectCardinalConflict(const MDD &mdd1, const MDD &mdd2)
 {
@@ -365,15 +365,13 @@ int computeDGHeuristic(const Map& map, const std::vector<HeuristicTable>& heuris
 }
 */
 
-std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName)
-{
+std::vector<AStarPath> findSolution(
+    Map map, HeuristicType type, std::string experimentName,
+    bool PARALLELIZE, uint NTHREADS
+) {
     std::vector<HeuristicTable> heuristics;
-    // PARALLELIZE HERE
-    for (int a = 0; a < map.nAgents; a++)
-    {
-        heuristics.push_back(computeAstarHeuristics(map.agents[a].goal, map));
-    }
-    /////////////
+
+    computeAllAStarHeuristics(heuristics, map, map.nAgents, PARALLELIZE, NTHREADS);
 
     auto start = std::chrono::high_resolution_clock::now();
 
