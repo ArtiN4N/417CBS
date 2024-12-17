@@ -1,138 +1,182 @@
 #include "../include/mdd.h"
 #include "../include/cbs.h"
 #include <unordered_set>
+#include <unordered_map>
 
+// int current_cost = hTable[curr->location] + curr->level;
+//         int next_cost = hTable[nextLocation] + curr->level + 1;
 
-bool MDD::createMDD(AStarLocation start, int time, uint agent, const std::vector<Constraint>& constraints, Map map, HeuristicTable hTable) {
+//         if (next_cost > current_cost) continue;
 
+// Hash function for std::pair to use in unordered_map
+struct pair_hash
+{
+    template <class T1, class T2>
+    std::size_t operator()(const std::pair<T1, T2> &pair) const
+    {
+        return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
+    }
+};
+
+bool MDD::createMDD(AStarLocation start, int time, uint agent, const std::vector<Constraint> &constraints, Map map, HeuristicTable hTable)
+{
+    // Build constraint and goal wall tables
     GoalWallTable goalWalls;
     ConstraintTable cTable = buildConstraintTable(constraints, agent, goalWalls);
 
-    MDDNode* root = new MDDNode(start, NULL);
+    // Initialize root node and data structures
+    MDDNode *root = new MDDNode(start, nullptr);
+    root->level = 0; // Root starts at level 0
+    std::queue<MDDNode *> open;
+    std::list<MDDNode *> closed;
 
-	std::queue<MDDNode*> open;
-	std::list<MDDNode*> closed;
+    // Track nodes by (location, level)
+    std::unordered_map<std::pair<AStarLocation, int>, MDDNode *, pair_hash> nodeTable;
 
-	open.push(root);
-	closed.push_back(root);
+    open.push(root);
+    closed.push_back(root);
+    nodeTable[{root->location, root->level}] = root;
 
-	locsAtTime.resize(time + 1);
+    locsAtTime.clear();
+    locsAtTime.resize(time); // Resize levels array
 
-	while (!open.empty()) {
-        MDDNode* curr = open.front();
-		open.pop();
+    // BFS to construct the MDD
+    while (!open.empty())
+    {
+        MDDNode *curr = open.front();
+        open.pop();
 
-		if (curr->level == time) {
-			locsAtTime[time].push_back(curr);
-			continue;
-		}
+        // Validate level before adding to locsAtTime
+        if (curr->level < 0 || curr->level >= time)
+        {
+            std::cerr << "Error: Node level out of bounds!" << std::endl;
+            return false;
+        }
 
-        for (uint i = 0; i < 5; i++)
-		{
+        // Add the current node to the correct level
+        locsAtTime[curr->level].push_back(curr);
+
+        // Stop expanding nodes beyond the last level
+        if (curr->level == time - 1)
+            continue;
+
+        // Define the heuristic bound for pruning
+        double heuristicBound = time - curr->level - 2 + 0.001;
+
+        for (uint i = 0; i < 5; i++) // Check all possible moves
+        {
             uint dir = i;
 
-            bool wrongNorth = dir == 0 && curr->location.second == 0;
-            bool wrongEast = dir == 1 && curr->location.first == map.cols - 1;
-            bool wrongSouth = dir == 2 && curr->location.second == map.rows - 1;
-            bool wrongWest = dir == 3 && curr->location.first == 0;
-
-            if (wrongNorth || wrongEast || wrongSouth || wrongWest) continue;
-
-			AStarLocation nextLocation = curr->location;
-
-            if (i != 4) nextLocation = move(nextLocation, dir);
-
-            if (isConstrained(curr->location, nextLocation, curr->level + 1, cTable)) continue;
-
-            if (map.tiles[nextLocation.first][nextLocation.second]) continue;
-
-            if (goalWalls.find(nextLocation) != goalWalls.end())
-                if (goalWalls[nextLocation] <= curr->level + 1)
-                    continue;
-
-            int current_cost = hTable[curr->location] + curr->level;
-            int next_cost = hTable[nextLocation] + curr->level + 1;
-
-            if (next_cost > current_cost) continue;
-
-            // Check if the node already exists
-            bool found = false;
-            for (MDDNode* node : closed) {
-                if (node->level == curr->level + 1 && node->location == nextLocation) {
-                    node->pars.push_back(curr);
-                    curr->childs.push_back(node);
-                    found = true;
-                    break;
-                }
+            // Validate moves to ensure they are within bounds
+            if ((dir == 0 && curr->location.second == 0) ||            // North
+                (dir == 1 && curr->location.first == map.cols - 1) ||  // East
+                (dir == 2 && curr->location.second == map.rows - 1) || // South
+                (dir == 3 && curr->location.first == 0))               // West
+            {
+                continue;
             }
 
-              // If not found, create a new node
-            if (!found) {
-                MDDNode* nextNode = new MDDNode(nextLocation, curr);
-                nextNode->level = curr->level + 1; // Update the level of the new node
+            AStarLocation nextLocation = curr->location;
+
+            if (i != 4)
+                nextLocation = move(nextLocation, dir);
+
+            // Check constraints and heuristic bounds
+            if (isConstrained(curr->location, nextLocation, curr->level + 1, cTable) ||
+                map.tiles[nextLocation.first][nextLocation.second] ||
+                (goalWalls.find(nextLocation) != goalWalls.end() && goalWalls[nextLocation] <= curr->level + 1) ||
+                hTable[nextLocation] > heuristicBound)
+            {
+                continue;
+            }
+
+            // Check if the node already exists using the hash map
+            auto key = std::make_pair(nextLocation, curr->level + 1);
+            if (nodeTable.find(key) != nodeTable.end())
+            {
+                MDDNode *existingNode = nodeTable[key];
+                if (existingNode->level != curr->level + 1)
+                {
+                    std::cerr << "Error: Node level mismatch detected!" << std::endl;
+                    return false;
+                }
+                existingNode->pars.push_back(curr);
+            }
+            else
+            {
+                // Create a new node if not found
+                MDDNode *nextNode = new MDDNode(nextLocation, curr);
+                nextNode->level = curr->level + 1;
                 open.push(nextNode);
                 closed.push_back(nextNode);
-                curr->childs.push_back(nextNode);
-            }        
-		}
-    }
-
-     // Add nodes to the levels structure
-    if (!closed.empty()) {
-        for (MDDNode* node : closed) {
-            if (node->level <= time) {
-                locsAtTime[node->level].push_back(node);
+                nodeTable[key] = nextNode;
             }
         }
     }
-   
 
-    std::unordered_set<MDDNode*> deletedNodes; // Tracks nodes that have been deleted
-
-    // Cleanup: Remove unused nodes
-    for (auto it = closed.begin(); it != closed.end();) {
-        if ((*it)->childs.empty() && (*it)->level < time) {
-            if (deletedNodes.find(*it) == deletedNodes.end()) { // Avoid deleting twice
-                delete *it;
-                deletedNodes.insert(*it);
+    // Backward phase: build child relationships
+    for (int t = time - 1; t > 0; t--)
+    {
+        for (auto &node : locsAtTime[t])
+        {
+            for (auto &parent : node->pars)
+            {
+                if (parent->childs.empty())
+                {
+                    if (std::find(locsAtTime[t - 1].begin(), locsAtTime[t - 1].end(), parent) == locsAtTime[t - 1].end())
+                    {
+                        locsAtTime[t - 1].push_back(parent);
+                    }
+                }
+                parent->childs.push_back(node);
             }
-            it = closed.erase(it);
-        } else {
-            ++it;
         }
     }
 
+    // Final level validation
+    for (int t = 0; t < time; t++)
+    {
+        for (auto &node : locsAtTime[t])
+        {
+            if (node->level != t)
+            {
+                std::cerr << "Error: Node at incorrect level!" << std::endl;
+                return false;
+            }
+        }
+    }
 
     return true;
-
-
 }
 
-
-MDD::~MDD() {
-    std::unordered_set<MDDNode*> deletedNodes; 
-    for (auto& timeStep : locsAtTime) {      
-        for (auto node : timeStep) {        
-            if (deletedNodes.find(node) == deletedNodes.end()) { 
-                delete node;                 
-                deletedNodes.insert(node);   
+MDD::~MDD()
+{
+    std::unordered_set<MDDNode *> deletedNodes;
+    for (auto &timeStep : locsAtTime)
+    {
+        for (auto node : timeStep)
+        {
+            if (deletedNodes.find(node) == deletedNodes.end())
+            {
+                delete node;
+                deletedNodes.insert(node);
             }
         }
-        timeStep.clear();                  
+        timeStep.clear();
     }
-    locsAtTime.clear();                     
+    locsAtTime.clear();
 }
 
-
-
-
-void MDD::printMDD() const {
+void MDD::printMDD() const
+{
     std::cout << "Multi-Level Directed Graph (MDD):\n";
-    for (size_t level = 0; level < locsAtTime.size(); ++level) {
+    for (size_t level = 0; level < locsAtTime.size(); ++level)
+    {
 
         std::cout << "Level " << level << ":\n";
 
-        for (const auto* node : locsAtTime[level]) {
+        for (const auto *node : locsAtTime[level])
+        {
             std::cout << "  Node at (" << node->location.first << ", " << node->location.second << ") ";
             std::cout << "]\n";
         }
