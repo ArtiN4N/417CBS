@@ -1,4 +1,6 @@
 #include "../include/cbs.h"
+#include "../include/mdd.h"
+
 
 void printAStarPath(AStarPath path)
 {
@@ -170,53 +172,33 @@ std::vector<Collision> detectCollisions(std::vector<AStarPath> paths)
     return ret;
 }
 
-bool detectCollisionCardinalConflict() {
- return false;
-}
-
-bool detectCardinalConflict(const std::vector<AStarPath> &paths1, const std::vector<AStarPath> &paths2)
+bool detectCardinalConflict(const MDD &mdd1, const MDD &mdd2)
 {
-    size_t maxTimestep = 0;
-    for (const auto &path : paths1)
+    int levels = std::min(mdd1.locsAtTime.size(), mdd2.locsAtTime.size());
+
+    for (int level = 0; level < levels; ++level)
     {
-        maxTimestep = std::max(maxTimestep, path.size());
-    }
-    for (const auto &path : paths2)
-    {
-        maxTimestep = std::max(maxTimestep, path.size());
-    }
+        // Get the list of nodes at the current level for both MDDs
+        const std::list<MDDNode *> &nodes1 = mdd1.locsAtTime[level];
+        const std::list<MDDNode *> &nodes2 = mdd2.locsAtTime[level];
 
-    for (uint t = 0; t < maxTimestep; t++)
-    {
-
-        // Get all locations agent 1 and 2 can be a time t
-        std::vector<AStarLocation> locations1;
-        std::vector<AStarLocation> locations2;
-
-        // Get all possible locations for agent 1 at time t
-        for (const auto &path : paths1)
+        // Check if both levels have exactly one node
+        if (nodes1.size() == 1 && nodes2.size() == 1)
         {
-            AStarLocation loc = getLocation(path, t);
-            locations1.push_back(loc);
-        }
+            // Retrieve the single nodes
+            MDDNode *node1 = nodes1.front();
+            MDDNode *node2 = nodes2.front();
 
-        // Get all possible locations for agent 1 at time t
-        for (const auto &path : paths2)
-        {
-            AStarLocation loc = getLocation(path, t);
-            locations2.push_back(loc);
-        }
-
-        std::sort(locations1.begin(), locations1.end());
-        std::sort(locations2.begin(), locations2.end());
-
-        if (locations1 == locations2)
-        {
-            return true; // Cardinal conflict detected
+            // Compare their locations
+            if (node1->location == node2->location)
+            {
+                return true; // Cardinal conflict detected
+            }
         }
     }
 
-    return false; // No cardinal conflict detected
+    // No cardinal conflict found
+    return false;
 }
 
 // Check if a set of vertices form a vertex cover
@@ -276,13 +258,14 @@ int minimumWeightedVertexCover(std::vector<int>& HG, int nAgents) {
     int ret = 0;
     std::vector<bool> finished(nAgents, false);
 
-    for (int i = 0; i < nAgentsl i++) {
+    for (int i = 0; i < nAgents; i++) {
         if (finished[i]) continue;
 
         std::queue<int> wvcq;
         wvcq.push(i);
         finished[i] = true;
     }
+    return ret;
 }
 
 std::pair<Constraint, Constraint> standardSplitting(Collision c)
@@ -307,7 +290,7 @@ bool compareAStarNodes(AStarNode n1, AStarNode n2)
     return n1.gval + n1.hval < n2.gval + n2.hval;
 }
 
-std::vector<AStarPath> aStar(
+AStarPath aStar(
     Map map, AStarLocation startLoc, AStarLocation goalLoc,
     HeuristicTable hTable, uint agent, std::vector<Constraint> constraints)
 {
@@ -363,51 +346,13 @@ std::vector<AStarPath> aStar(
     AStarNode *nodePtr = &closedList[std::make_pair(startLoc, 0)];
     openList.push(nodePtr);
 
-    std::vector<AStarPath> shortestPaths;
-    int shortestCost = INT_MAX;
-
-    //std::cout << "maxtimestep = " << maxTimestep << "\n";
-
     while (openList.size() > 0)
     {
         AStarNode *curr = openList.top();
         openList.pop();
 
-        AStarPath cpath = getPath(curr);
-        int cpathCost = cpath.size();
-        if (cpathCost > shortestCost) continue;
-        std::cout << "cheaper than shortest cost " << shortestCost << "\n";
-        //printAStarPath(cpath);
-
         if (curr->location == goalLoc && curr->timeStep >= maxTimestep)
-        {
-            //std::cout << "found a new path\n";
-            
-
-            // Determine the path cost (length of the path)
-            
-
-            if (cpathCost < shortestCost) {
-                shortestPaths.clear();
-                //std::cout << "found a new shortest path\n";
-            }
-
-            if (cpathCost <= shortestCost){
-                //std::cout << "found an equivalent shortest path\n";
-                shortestCost = cpathCost;//pathCost;
-                shortestPaths.push_back(cpath);
-                //std::cout << "shortest path cost is now " << shortestCost << "\n";
-
-                // for (const auto& path : shortestPaths) {
-                //     std::cout << "Path for " << agent << ": ";
-                //     for (const auto& loc : path) {
-                //         std::cout << "(" << loc.first << ", " << loc.second << ") ";
-                //     }
-                //     std::cout << std::endl;
-                // }
-            }
-            continue;
-        }
+            return getPath(curr);
 
         for (int i = 0; i < 5; i++)
         {
@@ -469,7 +414,7 @@ std::vector<AStarPath> aStar(
         }
     }
 
-    return shortestPaths;
+    return {};
 }
 
 std::vector<AStarPath> aStarforHeurs(
@@ -671,8 +616,6 @@ void printResults(std::vector<AStarPath> paths, uint nExpanded, uint nGenerated,
     //std::cout << "Generated nodes : " << nGenerated << std::endl;
 }
 
-
-
 HeuristicTable computeAstarHeuristics(AStarLocation goal, Map map)
 {
     struct HNode
@@ -744,110 +687,99 @@ HeuristicTable computeAstarHeuristics(AStarLocation goal, Map map)
     return hTable;
 }
 
-int computeCGHeuristic(const Map &map, const std::vector<HeuristicTable> &heuristics, const std::vector<Constraint> &constraints)
+int computeCGHeuristic(const Map &map, const std::vector<Constraint> &constraints, const std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
 {
-    std::unordered_map<int, std::vector<AStarPath>> agentPaths;
-    // list to store pairs of agents with cardinal conflicts
     std::vector<std::pair<int, int>> conflictingAgentPairs;
+    std::vector<MDD> mdds(map.nAgents); // Pre-allocate memory for MDDs
 
-    for (int a = 0; a < map.nAgents; ++a)
+    // Create MDDs for all agents
+    for (int i = 0; i < map.nAgents; i++)
     {
-        agentPaths[a] = aStarforHeurs(map, map.starts[a], map.goals[a], heuristics[a], a, constraints);
-        std::cout << "size in cg h = " << agentPaths[a].size() << std::endl;
+        AStarPath pathi = paths[i];
+        mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
     }
 
+    // Check for conflicts between agent pairs
     for (size_t i = 0; i < map.nAgents; i++)
     {
         for (size_t j = i + 1; j < map.nAgents; j++)
         {
-            // if they have cardinal conflict add pair of agents to list
-            const auto &paths1 = agentPaths[i];
-            const auto &paths2 = agentPaths[j];
-
-            if (detectCardinalConflict(paths1, paths2))
+            if (detectCardinalConflict(mdds[i], mdds[j]))
             {
                 // Store the pair of conflicting agents
                 conflictingAgentPairs.emplace_back(i, j);
             }
         }
     }
+
+    // Compute the minimum vertex cover for the conflict graph
     return minimumVertexCover(conflictingAgentPairs);
 }
 
-bool detectDependecy(const std::vector<AStarPath> &paths1, const std::vector<AStarPath> &paths2)
+// bool detectDependecy(const std::vector<AStarPath>& paths1, const std::vector<AStarPath>& paths2) {
+//     for (uint path1 = 0; path1 < paths1.size(); path1++) {
+//         for (uint path2 = 0; path2 < paths2.size(); path2++) {
+
+//             size_t maxTimestep = 0;
+//             for (const auto& path : paths1) {
+//                 maxTimestep = std::max(maxTimestep, path.size());
+//             }
+//             for (const auto& path : paths2) {
+//                 maxTimestep = std::max(maxTimestep, path.size());
+//             }
+
+//             bool conflict = false;
+
+//             for (uint t = 0; t < maxTimestep; t++) {
+//                 if (getLocation(paths1[path1], t) == getLocation(paths2[path2],t)) {
+//                     conflict = true;
+//                     break;
+//                 }
+//             }
+
+//             if (!conflict) { // if we go through a pair of paths with no conflicts then these agents arent dependent
+//                 return false;
+//             }
+//         }
+//     }
+//     return true;
+// }
+
+// int computeDGHeuristic(const Map& map, const std::vector<HeuristicTable>& heuristics, const std::vector<Constraint>& constraints) {
+//     std::unordered_map<int, std::vector<AStarPath>> agentPaths;
+//     // list to store pairs of agents with cardinal conflicts
+//     std::vector<std::pair<int, int>> conflictingAgentPairs;
+
+//     for (int a = 0; a < map.nAgents; ++a) {
+//         agentPaths[a] = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, constraints);
+//     }
+
+//       for (size_t i = 0; i < map.nAgents; i++) {
+//         for (size_t j = i + 1; j < map.nAgents; j++) {
+
+//             const std::vector<AStarPath> paths1 = agentPaths[i];
+//             const std::vector<AStarPath> paths2 = agentPaths[j];
+
+//             if (detectCardinalConflict(paths1, paths2)) { // if they have cardinal conflict they are dependent
+//                 conflictingAgentPairs.emplace_back(i, j);
+//             } else if (detectDependecy(paths1, paths2)) { // explicitly check for dependency
+//                 conflictingAgentPairs.emplace_back(i, j);
+//             }
+//         }
+//     }
+
+//        // Print conflicting agent pairs
+//     std::cout << "Conflicting Agent Pairs:" << std::endl;
+//     for (const auto& pair : conflictingAgentPairs) {
+//         std::cout << "(" << pair.first << ", " << pair.second << ")" << std::endl;
+//     }
+
+//     return minimumVertexCover(conflictingAgentPairs);
+
+// }
+
+std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName)
 {
-    for (uint path1 = 0; path1 < paths1.size(); path1++)
-    {
-        for (uint path2 = 0; path2 < paths2.size(); path2++)
-        {
-
-            size_t maxTimestep = 0;
-            for (const auto &path : paths1)
-            {
-                maxTimestep = std::max(maxTimestep, path.size());
-            }
-            for (const auto &path : paths2)
-            {
-                maxTimestep = std::max(maxTimestep, path.size());
-            }
-
-            bool conflict = false;
-
-            for (uint t = 0; t < maxTimestep; t++)
-            {
-                if (getLocation(paths1[path1], t) == getLocation(paths2[path2], t))
-                {
-                    conflict = true;
-                    break;
-                }
-            }
-
-            if (!conflict)
-            { // if we go through a pair of paths with no conflicts then these agents arent dependent
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-int computeDGHeuristic(const Map &map, const std::vector<HeuristicTable> &heuristics, const std::vector<Constraint> &constraints)
-{
-    std::unordered_map<int, std::vector<AStarPath>> agentPaths;
-    // list to store pairs of agents with cardinal conflicts
-    std::vector<std::pair<int, int>> conflictingAgentPairs;
-
-    for (int a = 0; a < map.nAgents; ++a)
-    {
-        agentPaths[a] = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, constraints);
-    }
-
-    for (size_t i = 0; i < map.nAgents; i++)
-    {
-        for (size_t j = i + 1; j < map.nAgents; j++)
-        {
-
-            const std::vector<AStarPath> paths1 = agentPaths[i];
-            const std::vector<AStarPath> paths2 = agentPaths[j];
-
-            if (detectCardinalConflict(paths1, paths2))
-            { // if they have cardinal conflict they are dependent
-                conflictingAgentPairs.emplace_back(i, j);
-            }
-            else if (detectDependecy(paths1, paths2))
-            { // explicitly check for dependency
-                conflictingAgentPairs.emplace_back(i, j);
-            }
-        }
-    }
-    return minimumVertexCover(conflictingAgentPairs);
-}
-
-void moveCardinalsToFront(std::vector<Collision> collisions) {
-
-}
-
-std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName) {
     std::vector<HeuristicTable> heuristics;
     for (int a = 0; a < map.nAgents; a++)
     {
@@ -872,7 +804,7 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
     {
         bool operator()(const CBSNode &a, const CBSNode &b)
         {
-            return a.cost + a.heuristic > b.cost + b.heuristic;
+            return a.cost - a.heuristic > b.cost - b.heuristic;
         }
     };
 
@@ -883,16 +815,12 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
 
     for (int a = 0; a < map.nAgents; a++)
     {
-        std::vector<AStarPath> paths = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, root.constraints);
-        //std::cout << "size in find soln = " << paths.size() << std::endl;
-
-        if (paths.size() == 0)
+        AStarPath path = aStar(map, map.starts[a], map.goals[a], heuristics[a], a, root.constraints);
+        if (path.size() == 0)
         {
             std::cerr << "No solutions!" << std::endl;
             return {};
         }
-
-        AStarPath path = paths[0];
         root.paths.push_back(path);
     }
 
@@ -902,37 +830,33 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
     openList.push(root);
     nGenerated++;
 
-    //int i = 0;
     for (auto &collision : root.collisions)
     {
-        //std::pair<Constraint, Constraint> c = standardSplitting(collision);
-        //Constraint c1 = c.first;
-        //Constraint c2 = c.second;
+        std::pair<Constraint, Constraint> c = standardSplitting(collision);
+        Constraint c1 = c.first;
+        Constraint c2 = c.second;
 
-        //std::cout << "First constraint: ";
-        //printConstraint(c1);
-        //std::cout << "Second constraint: ";
-        //printConstraint(c2);
-
-        //if (detectCollisionCardinalConflict(collision)) {
-            //std::rotate(root.collisions.begin(), root.collisions.begin() + i, root.collisions.begin() + i + 1);
-        //}
-        //i++;
-        //break;
+        // std::cout << "First constraint: ";
+        // printConstraint(c1);
+        // std::cout << "Second constraint: ";
+        // printConstraint(c2);
     }
 
     uint maxPathLength = map.cols * map.rows * 10;
     uint maxIters = maxPathLength * 10 * map.nAgents;
     uint i = 0;
 
+    // while (openList.size() > 0)
+    // {
+    //     i++;
+    //     if (i > maxIters) {
+    //         std::cout << "Broke from maxIters\n";
+    //         break;
+    //     }
+    // }
     while (openList.size() > 0)
     {
-        i++;
-        if (i > maxIters) {
-            std::cout << "Broke from maxIters\n";
-            break;
-        }
-
+        // std::cout << "\n############ EXPANDING NODE ############" << std::endl;
         CBSNode curr = openList.top();
         openList.pop();
         nExpanded++;
@@ -965,13 +889,12 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
             qNode.constraints.push_back(constraint);
 
             uint agentId = constraint.agentId;
-            std::vector<AStarPath> paths = aStar(
+            AStarPath path = aStar(
                 map, map.starts[agentId], map.goals[agentId],
                 heuristics[agentId], agentId, qNode.constraints);
 
-            if (paths.size() > 0)
+            if (path.size() > 0)
             {
-                AStarPath path = paths[0];
                 qNode.paths[agentId] = path;
                 qNode.collisions = detectCollisions(qNode.paths);
                 qNode.cost = getSumOfCost(qNode.paths);
@@ -982,9 +905,11 @@ std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string exp
                 switch (type)
                 { // Default case: no heuristic just proceed and h value will be left as 0
                 case CG:
-                    qNode.heuristic = computeCGHeuristic(map, heuristics, qNode.constraints);
+                    qNode.heuristic = computeCGHeuristic(map, qNode.constraints, qNode.paths, heuristics);
+                    // std::cout << "Computed CG heuristic: " << qNode.heuristic << std::endl;
                 case DG:
-                    qNode.heuristic = computeDGHeuristic(map, heuristics, qNode.constraints);
+                    // qNode.heuristic = computeDGHeuristic(map, heuristics, qNode.constraints);
+                    // std::cout << "Computed DG heuristic: " << qNode.heuristic << std::endl;
                 case WDG:
                     qNode.heuristic = 0;
                 }

@@ -18,7 +18,7 @@ int main(int argc, char* argv[]) {
     }
 
     HeuristicType type = CG;
-
+ 
     Map map = {};
     map.initAgents();
     std::string mapName = map.loadMapBoundsFromFile(number);

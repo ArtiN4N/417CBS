@@ -1,6 +1,6 @@
 CC = g++
 INC = -I include/
-SRC = src/map.cpp src/cbs.cpp src/cg/heuristic.cpp src/dg/heuristic.cpp src/wdg/heuristic.cpp
+SRC = src/map.cpp src/cbs.cpp src/cg/heuristic.cpp src/dg/heuristic.cpp src/wdg/heuristic.cpp src/mdd.cpp
 
 VIS_TEST_SRC = src/visualizer/vis_load.cpp src/visualizer/vis.cpp
 VIS_TEST_EXE = -o bin/vis_test
