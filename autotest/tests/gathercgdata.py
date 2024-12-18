@@ -9,7 +9,7 @@ for mapn in range(1, 31):
         if tn not in data[mapn]:
             data[mapn][tn] = []
 
-        inputFile = f'map{mapn}scen1t{tn}dg.out'
+        inputFile = f'map{mapn}scen1t{tn}wdg.out'
 
         with open(inputFile, 'r') as file:
             for line in file:
@@ -69,7 +69,7 @@ plt.plot(maps, speedup_8, label="8 Threads", marker="d", color="red")
 # Add labels, title, and legend
 plt.xlabel("Map Number")
 plt.ylabel("Speedup factor")
-plt.title("CG heuristic Speedup for 2 and 4 Threads Compared to 1 Thread")
+plt.title("WDG heuristic Speedup for 2 and 4 Threads Compared to 1 Thread")
 plt.xticks(maps)  # Show each map number on the x-axis
 plt.legend()
 plt.grid(True)
