@@ -3,11 +3,6 @@
 #include <unordered_set>
 #include <unordered_map>
 
-// int current_cost = hTable[curr->location] + curr->level;
-//         int next_cost = hTable[nextLocation] + curr->level + 1;
-
-//         if (next_cost > current_cost) continue;
-
 // Hash function for std::pair to use in unordered_map
 struct pair_hash
 {
@@ -60,9 +55,6 @@ bool MDD::createMDD(AStarLocation start, int time, uint agent, const std::vector
         if (curr->level == time - 1)
             continue;
 
-        // Define the heuristic bound for pruning
-        int heuristicBound = time - curr->level - 2;
-
         for (uint i = 0; i < 5; i++) // Check all possible moves
         {
             uint dir = i;
@@ -81,11 +73,14 @@ bool MDD::createMDD(AStarLocation start, int time, uint agent, const std::vector
             if (i != 4)
                 nextLocation = move(nextLocation, dir);
 
+            int current_cost = hTable[curr->location] + curr->level;
+            int next_cost = hTable[nextLocation] + curr->level + 1;
+
             // Check constraints and heuristic bounds
             if (isConstrained(curr->location, nextLocation, curr->level + 1, cTable) ||
                 map.tiles[nextLocation.first][nextLocation.second] ||
                 (goalWalls.find(nextLocation) != goalWalls.end() && goalWalls[nextLocation] <= curr->level + 1) ||
-                hTable[nextLocation] > heuristicBound)
+                next_cost > current_cost)
             {
                 continue;
             }
@@ -183,7 +178,6 @@ void MDD::printMDD() const
     }
 }
 
-
 bool detectCardinalConflict(const MDD &mdd1, const MDD &mdd2)
 {
     int levels = std::min(mdd1.locsAtTime.size(), mdd2.locsAtTime.size());
@@ -235,47 +229,52 @@ bool detectCardinalConflict(const MDD &mdd1, const MDD &mdd2)
             }
         }
     }
-
     // No cardinal or edge conflict found
     return false;
 }
 
 void createSerialMDDs(
-	std::vector<MDD>& mdds, std::vector<AStarPath> &paths,
-	std::vector<Constraint> &constraints, Map &map, std::vector<HeuristicTable> heuristics,
-    uint nAgents
-) {
-    for (int i = 0; i < nAgents; i++) {
+    std::vector<MDD> &mdds, std::vector<AStarPath> &paths,
+    std::vector<Constraint> &constraints, Map &map, std::vector<HeuristicTable> heuristics,
+    uint nAgents)
+{
+    for (int i = 0; i < nAgents; i++)
+    {
         AStarPath pathi = paths[i];
         mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
     }
 }
 
 void createParallelMDDs(
-	std::vector<MDD>& mdds, std::vector<AStarPath> &paths,
-	std::vector<Constraint> &constraints, Map &map, std::vector<HeuristicTable> heuristics,
-    uint nAgents, uint nthreads
-) {
-    for (int i = 0; i < nAgents; i++) {
+    std::vector<MDD> &mdds, std::vector<AStarPath> &paths,
+    std::vector<Constraint> &constraints, Map &map, std::vector<HeuristicTable> heuristics,
+    uint nAgents, uint nthreads)
+{
+    for (int i = 0; i < nAgents; i++)
+    {
         AStarPath pathi = paths[i];
         mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
     }
 }
 
 void createAllMDDs(
-	std::vector<MDD>& mdds, std::vector<AStarPath> &paths,
-	std::vector<Constraint> &constraints, Map &map, std::vector<HeuristicTable> heuristics,
-    bool parallel, uint nthreads
-) {
-    if (parallel) createParallelMDDs(mdds, paths, constraints, map, heuristics, map.nAgents, nthreads);
-    else createSerialMDDs(mdds, paths, constraints, map, heuristics, map.nAgents);
+    std::vector<MDD> &mdds, std::vector<AStarPath> &paths,
+    std::vector<Constraint> &constraints, Map &map, std::vector<HeuristicTable> heuristics,
+    bool parallel, uint nthreads)
+{
+    if (parallel)
+        createParallelMDDs(mdds, paths, constraints, map, heuristics, map.nAgents, nthreads);
+    else
+        createSerialMDDs(mdds, paths, constraints, map, heuristics, map.nAgents);
 }
 
 void grabSerialConflictingPairs(
-    std::vector<MDD>& mdds, Map& map, std::vector<std::pair<int, int>>& conflictingAgentPairs, uint nAgents
-) {
-    for (size_t i = 0; i < nAgents; i++) {
-        for (size_t j = i + 1; j < nAgents; j++) {
+    std::vector<MDD> &mdds, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, uint nAgents)
+{
+    for (size_t i = 0; i < nAgents; i++)
+    {
+        for (size_t j = i + 1; j < nAgents; j++)
+        {
             if (detectCardinalConflict(mdds[i], mdds[j]))
                 conflictingAgentPairs.emplace_back(i, j);
         }
@@ -283,10 +282,12 @@ void grabSerialConflictingPairs(
 }
 
 void grabParallelConflictingPairs(
-    std::vector<MDD>& mdds, Map& map, std::vector<std::pair<int, int>>& conflictingAgentPairs, uint nAgents, uint nthreads
-) {
-    for (size_t i = 0; i < nAgents; i++) {
-        for (size_t j = i + 1; j < nAgents; j++) {
+    std::vector<MDD> &mdds, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, uint nAgents, uint nthreads)
+{
+    for (size_t i = 0; i < nAgents; i++)
+    {
+        for (size_t j = i + 1; j < nAgents; j++)
+        {
             if (detectCardinalConflict(mdds[i], mdds[j]))
                 conflictingAgentPairs.emplace_back(i, j);
         }
@@ -294,8 +295,10 @@ void grabParallelConflictingPairs(
 }
 
 void grabAllConflictingPairs(
-    std::vector<MDD>& mdds, Map& map, std::vector<std::pair<int, int>>& conflictingAgentPairs, bool parallel, uint nthreads
-) {
-    if (parallel) grabParallelConflictingPairs(mdds, map, conflictingAgentPairs, map.nAgents, nthreads);
-    else grabSerialConflictingPairs(mdds, map, conflictingAgentPairs, map.nAgents);
+    std::vector<MDD> &mdds, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, bool parallel, uint nthreads)
+{
+    if (parallel)
+        grabParallelConflictingPairs(mdds, map, conflictingAgentPairs, map.nAgents, nthreads);
+    else
+        grabSerialConflictingPairs(mdds, map, conflictingAgentPairs, map.nAgents);
 }
