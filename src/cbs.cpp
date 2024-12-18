@@ -114,19 +114,19 @@ int minimumVertexCover(const std::vector<std::pair<int, int>> &edges)
 
 
 
-int minimumWeighedVertexCover(const std::vector<std::pair<int, int>> &edges, int nAgents) {
-    int ret = 0;
-    std::vector<bool> finished(nAgents, false);
+// int minimumWeighedVertexCover(const std::vector<std::pair<int, int>> &edges, int nAgents) {
+//     int ret = 0;
+//     std::vector<bool> finished(nAgents, false);
 
-    for (int i = 0; i < nAgents; i++) {
-        if (finished[i]) continue;
+//     for (int i = 0; i < nAgents; i++) {
+//         if (finished[i]) continue;
 
-        std::queue<int> wvcq;
-        wvcq.push(i);
-        finished[i] = true;
-    }
-    return ret;
-}
+//         std::queue<int> wvcq;
+//         wvcq.push(i);
+//         finished[i] = true;
+//     }
+//     return ret;
+// }
 
 int computeCGHeuristic(const Map &map, const std::vector<Constraint> &constraints, const std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
 {
@@ -198,6 +198,29 @@ bool detectDependency(const MDD &mdd1, const MDD &mdd2)
     return jointMDD[minLevels - 1].empty();
 }
 
+int computeConflictWeight(const Map &map, const std::vector<Constraint> &constraints,
+                          const std::vector<AStarPath> &paths, int agent1, int agent2,
+                          const std::vector<HeuristicTable> &heuristics)
+{
+    // Find original costs
+    int cost1 = getSumOfCost({paths[agent1]});
+    int cost2 = getSumOfCost({paths[agent2]});
+
+    // Add constraints to resolve conflict
+    std::vector<Constraint> tempConstraints = constraints;
+
+    // Recalculate path without heuristics
+    AStarPath oldPath1 = aStar(map, map.starts[agent1], map.goals[agent1], heuristics[agent1], agent1, {});
+    AStarPath oldPath2 = aStar(map, map.starts[agent2], map.goals[agent2], heuristics[agent2], agent2, {});
+
+    // Compute the delta cost
+    int oldCost1 = getSumOfCost({oldPath1});
+    int oldCost2 = getSumOfCost({oldPath2});
+
+    return (cost1 + cost2) - (oldCost1 + oldCost2);
+}
+
+
 int computeDGHeuristic(const Map &map, const std::vector<Constraint> &constraints, const std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
 {
     std::vector<std::pair<int, int>> conflictingAgentPairs;
@@ -263,7 +286,7 @@ int minimumWeightedVertexCover(std::vector<std::pair<int, int>> &edges,
             totalCost += maxWeight;
         }
 
-        // Remove all edges incident to u or v
+        // Remove all edges that intersect with u or v
         for (size_t i = 0; i < edges.size();)
         {
             if (edges[i].first == u || edges[i].second == u || edges[i].first == v || edges[i].second == v)
@@ -299,19 +322,25 @@ int computeWDGHeuristic(const Map &map, const std::vector<Constraint> &constrain
             if (detectCardinalConflict(mdds[i], mdds[j]))
             {
                 // Same check as DG, but we need to get weights
-                int weight = getSumOfCost({paths[i], paths[j]});
+                // Weight should be sum of increase in paths
+                int weight = computeConflictWeight(map, constraints, paths, i, j, heuristics);
                 conflictingAgentPairs.emplace_back(i, j);
                 weights.push_back(weight);
             }
             else if (detectDependency(mdds[i], mdds[j]))
-            { // explicitly check for dependency
-                int weight = getSumOfCost({paths[i], paths[j]}) / 2;
+            { 
+                // check  seperatey as to not call depenfency as often
+                int weight = computeConflictWeight(map, constraints, paths, i, j, heuristics);
                 conflictingAgentPairs.emplace_back(i, j);
                 weights.push_back(weight);
             }
         }
     }
-    return minimumWeightedVertexCover(conflictingAgentPairs, weights, map.nAgents);
+    std::cout << "Getting Vertex Cover \n";
+    int ret = minimumWeightedVertexCover(conflictingAgentPairs, weights, map.nAgents);
+    
+    std::cout << ret << " Max W Vertex Cover \n";
+    return ret;
 }
 
 std::vector<AStarPath> findSolution(Map map, HeuristicType type, std::string experimentName)
