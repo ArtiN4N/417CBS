@@ -825,6 +825,10 @@ int computeWDGHeuristic(const Map &map, const std::vector<Constraint> &constrain
                 // Same check as DG, but we need to get weights
                 // Weight should be sum of increase in paths
                 int weight = getConflictWeight(map, constraints, paths, i, j, heuristics);
+                // weight must be >= 1
+                if(weight < 1){
+                    weight = 1;
+                }
                 conflictingAgentPairs.emplace_back(i, j);
                 weights.push_back(weight);
             }
@@ -832,15 +836,16 @@ int computeWDGHeuristic(const Map &map, const std::vector<Constraint> &constrain
             { 
                 // check  seperatey as to not call depenfency as often
                 int weight = getConflictWeight(map, constraints, paths, i, j, heuristics);
+                // weight must be >= 1
+                if(weight < 1){
+                    weight = 1;
+                }
                 conflictingAgentPairs.emplace_back(i, j);
                 weights.push_back(weight);
             }
         }
     }
-    std::cout << "Getting Vertex Cover \n";
     int ret = minimumWeightedVertexCover(conflictingAgentPairs, weights, map.nAgents);
-    
-    std::cout << ret << " Max W Vertex Cover \n";
     return ret;
 }
 std::vector<AStarPath> findSolution(
