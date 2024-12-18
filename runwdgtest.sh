@@ -3,7 +3,7 @@
 # Trap SIGINT (Ctrl+C) to handle interruptions
 trap 'echo -e "\nCommand interrupted. Moving to the next test..."; continue' SIGINT
 
-INACTIVITY_TIMEOUT=60
+INACTIVITY_TIMEOUT=10
 
 # Function to run the tests
 run_tests() {
@@ -19,9 +19,9 @@ run_tests() {
 			continue
 		fi
 
-                # Command to execute
-                command="bin/dg_test $map $mode $thread"
-                echo "Running: $command"
+        # Command to execute
+        command="bin/wdg_test $map $mode $thread"
+        echo "Running: $command"
 
 		stdbuf -oL $command | (
                     SECONDS=0
