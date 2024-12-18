@@ -1,6 +1,8 @@
 # CMPT 417 Group SJG
 Parallel Conflict Based Search with heuristics
 
+repo: https://github.com/ArtiN4N/417CBS
+
 # TO REPRODUCE
 Run on CSIL or Ubuntu linux for consistency
 
@@ -19,7 +21,7 @@ The visualizer is set to load map 49. If you really care, you can go into the fi
 All compiled data can be found in the archive, in autotest/tests
 
 Data is formatted like so:
-"map{map #}scen1t{thread count}{modifier}.out"
+> map{map #}scen1t{thread count}{modifier}.out
 
 with modifier being "", "dg", "wdg" for cg, dg, and wdg results
 
