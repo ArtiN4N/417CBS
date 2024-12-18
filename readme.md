@@ -35,11 +35,12 @@ make wdg_test
 ```
 
 ### Test execution
-using modifier = { cg, dg, wdg},
+using
+> modifier = { cg, dg, wdg }
 
 run:
 ```
-bin/{modifier}_test {map #} {parallel? (0 or 1)} {threadcount}
+bin/<modifier>_test <map #> <parallel? (0 or 1)> <threadcount>
 ```
 
 This will generate the test files, formatted as described earlier, for the inputted map number, and threadcount. Use a 0 for parallel input if testing for serial, and 1 for testing parallel
