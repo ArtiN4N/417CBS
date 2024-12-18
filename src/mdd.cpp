@@ -484,3 +484,282 @@ void grabAllDGConflictingPairs(
                         }),
             conflictingAgentPairs.end());
 }
+
+bool compareAStarNodesW(AStarNode n1, AStarNode n2) {
+    return n1.gval + n1.hval < n2.gval + n2.hval;
+}
+
+AStarPath getPathW(AStarNode* goalNode) {
+    AStarPath path;
+    AStarNode* curr = goalNode;
+
+    while (curr != nullptr) {
+        path.push_back(curr->location);
+        curr = curr->parent;
+    }
+
+    std::reverse(path.begin(), path.end());
+    return path;
+}
+
+AStarPath aStarW(
+    Map map, AStarLocation startLoc, AStarLocation goalLoc,
+    HeuristicTable hTable, uint agent, std::vector<Constraint> constraints
+) {
+
+    struct CompareANode {
+        bool operator()(const AStarNode *a, const AStarNode *b) {
+            return a->gval + a->hval > b->gval + b->hval;
+        }
+    };
+
+    std::priority_queue<int, std::vector<AStarNode *>, CompareANode> openList;
+    std::unordered_map<std::pair<AStarLocation, uint>, AStarNode, PairHash> closedList;
+
+    GoalWallTable goalWalls;
+
+    uint hValue = hTable[startLoc];
+
+    ConstraintTable cTable = buildConstraintTable(constraints, agent, goalWalls);
+    uint maxTimestep = 0;
+
+    for (auto &pair : cTable) {
+        uint timeStep = pair.first;
+        auto constraints = pair.second;
+
+        for (auto &constraint : constraints) {
+
+            bool isVertex = !constraint.isEdgeCollision;
+            bool constraintAtGoal = constraint.l1 == goalLoc;
+
+            if (isVertex && constraintAtGoal)
+                if (timeStep > maxTimestep)
+                    maxTimestep = timeStep;
+        }
+    }
+
+    uint terminateTimestep = map.cols * map.rows;
+    if (goalWalls.size() > 0) {
+        int max_value = std::max_element(
+            goalWalls.begin(), goalWalls.end(),
+            [](const auto &a, const auto &b) {
+                return a.second < b.second;
+            }
+        )->second;
+        terminateTimestep += max_value + 1;
+    }
+
+    AStarNode root = {startLoc, 0, hValue, nullptr, 0};
+    closedList[std::make_pair(startLoc, 0)] = root;
+    AStarNode *nodePtr = &closedList[std::make_pair(startLoc, 0)];
+    openList.push(nodePtr);
+
+    while (openList.size() > 0) {
+        AStarNode *curr = openList.top();
+        openList.pop();
+
+        if (curr->location == goalLoc && curr->timeStep >= maxTimestep)
+            return getPathW(curr);
+
+        for (int i = 0; i < 5; i++) {
+            // cast int to ordered enum
+            uint dir = i;
+
+            bool wrongNorth = dir == 0 && curr->location.second == 0;
+            bool wrongEast = dir == 1 && curr->location.first == map.cols - 1;
+            bool wrongSouth = dir == 2 && curr->location.second == map.rows - 1;
+            bool wrongWest = dir == 3 && curr->location.first == 0;
+
+            if (wrongNorth || wrongEast || wrongSouth || wrongWest)
+                continue;
+
+            AStarLocation childLoc;
+
+            if (i == 4)
+                childLoc = curr->location;
+            else
+                childLoc = move(curr->location, dir);
+
+            uint childTime = curr->timeStep + 1;
+
+            if (childTime > terminateTimestep)
+                continue;
+
+            if (isConstrained(curr->location, childLoc, childTime, cTable))
+                continue;
+
+            if (map.tiles[childLoc.first][childLoc.second])
+                continue;
+
+            if (goalWalls.find(childLoc) != goalWalls.end())
+                if (goalWalls[childLoc] <= childTime)
+                    continue;
+
+            AStarNode child = {
+                childLoc,
+                curr->gval + 1, hTable[childLoc],
+                curr,
+                childTime};
+
+            if (closedList.find(std::make_pair(childLoc, childTime)) != closedList.end()) {
+                AStarNode existingNode = closedList[std::make_pair(childLoc, childTime)];
+                if (compareAStarNodesW(child, existingNode)) {
+                    closedList[std::make_pair(childLoc, childTime)] = child;
+                    AStarNode *nodePtr = &closedList[std::make_pair(childLoc, childTime)];
+                    openList.push(nodePtr);
+                }
+            } else {
+                closedList[std::make_pair(childLoc, childTime)] = child;
+                AStarNode *nodePtr = &closedList[std::make_pair(childLoc, childTime)];
+                openList.push(nodePtr);
+            }
+        }
+    }
+
+    return {};
+}
+
+
+uint getSumOfCostW(std::vector<AStarPath> paths) {
+    uint ret = 0;
+    for (auto& path : paths) ret += path.size() - 1;
+    return ret;
+}
+
+
+int getConflictWeight(const Map &map, const std::vector<Constraint> &constraints,
+                          const std::vector<AStarPath> &paths, int agent1, int agent2,
+                          const std::vector<HeuristicTable> &heuristics)
+{
+    // Find original costs
+    int cost1 = getSumOfCostW({paths[agent1]});
+    int cost2 = getSumOfCostW({paths[agent2]});
+
+    // Add constraints to resolve conflict
+    std::vector<Constraint> tempConstraints = constraints;
+
+    // Recalculate path without heuristics
+    AStarPath oldPath1 = aStarW(map, map.starts[agent1], map.goals[agent1], heuristics[agent1], agent1, {});
+    AStarPath oldPath2 = aStarW(map, map.starts[agent2], map.goals[agent2], heuristics[agent2], agent2, {});
+
+    // Compute the delta cost
+    int oldCost1 = getSumOfCostW({oldPath1});
+    int oldCost2 = getSumOfCostW({oldPath2});
+
+    return (cost1 + cost2) - (oldCost1 + oldCost2);
+}
+
+void grabWDGSerialConflictingPairs(
+    std::vector<MDD> &mdds, std::vector<int>& weights, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, 
+    std::vector<Constraint> &constraints, std::vector<HeuristicTable> heuristics, std::vector<AStarPath> &paths, uint nAgents
+) {
+
+    int total = nAgents * nAgents;
+    int n = total;
+    for (int k = 0; k < total; k++) {
+        int i = k / n;
+        int j = k % n;
+
+        if (i == j || j < i || i >= nAgents || j >= nAgents)
+            continue;
+
+        if (detectCardinalConflict(mdds[i], mdds[j]))
+        {
+            // Same check as DG, but we need to get weights
+            // Weight should be sum of increase in paths
+            int weight = getConflictWeight(map, constraints, paths, i, j, heuristics);
+            conflictingAgentPairs[k] = std::make_pair(i, j);
+            weights[k] = weight;
+        }
+        else if (detectDependency(mdds[i], mdds[j]))
+        { 
+            // check  seperatey as to not call depenfency as often
+            int weight = getConflictWeight(map, constraints, paths, i, j, heuristics);
+            conflictingAgentPairs[k] = std::make_pair(i, j);
+            weights[k] = weight;
+        }
+    }
+}
+
+void computeWDGConflictingPairs(
+    int start, int end, std::vector<MDD> &mdds, std::vector<int>& weights, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, 
+    std::vector<Constraint> &constraints, std::vector<HeuristicTable> heuristics, std::vector<AStarPath> &paths, int nAgents
+) {
+    int n = nAgents * nAgents;
+    for (int k = start; k < end; k++) {
+        int i = k / n;
+        int j = k % n;
+
+        if (i == j || j < i || i >= nAgents || j >= nAgents)
+            continue;
+
+        if (detectCardinalConflict(mdds[i], mdds[j]))
+        {
+            // Same check as DG, but we need to get weights
+            // Weight should be sum of increase in paths
+            int weight = getConflictWeight(map, constraints, paths, i, j, heuristics);
+            conflictingAgentPairs[k] = std::make_pair(i, j);
+            weights[k] = weight;
+        }
+        else if (detectDependency(mdds[i], mdds[j]))
+        { 
+            // check  seperatey as to not call depenfency as often
+            int weight = getConflictWeight(map, constraints, paths, i, j, heuristics);
+            conflictingAgentPairs[k] = std::make_pair(i, j);
+            weights[k] = weight;
+        }
+    }
+}
+
+
+void grabWDGParallelConflictingPairs(
+    std::vector<MDD> &mdds, std::vector<int>& weights, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, 
+    std::vector<Constraint> &constraints, std::vector<HeuristicTable> heuristics, std::vector<AStarPath> &paths, uint nAgents, uint nthreads)
+{
+    std::vector<std::thread> threads;
+
+    int n = nAgents;
+    int total = n * n;
+    int perThread = std::ceil((float) total / (float) nthreads);
+
+    for (int t = 0; t < nthreads; t++) {
+        int start = t * perThread;
+        int end = std::min((t + 1) * perThread, (int) total);
+        threads.push_back(
+            std::thread(
+                computeWDGConflictingPairs, start, end, std::ref(mdds), std::ref(weights),
+                std::ref(map), std::ref(conflictingAgentPairs), std::ref(constraints), std::ref(heuristics),
+                 std::ref(paths), nAgents
+            )
+        );
+    }
+
+    for (auto& t : threads) {
+        t.join();
+    }
+}
+
+
+void grabAllWDGConflictingPairs(
+    std::vector<MDD> &mdds, std::vector<int>& weights, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, bool parallel, uint nthreads,
+    std::vector<Constraint> &constraints, std::vector<HeuristicTable> heuristics, std::vector<AStarPath> &paths
+) {
+    int n = map.nAgents;
+    int total = n * n;
+    conflictingAgentPairs.resize(total);
+    weights.resize(total, -1);
+
+    if (parallel)
+        grabWDGParallelConflictingPairs(mdds, weights, map, conflictingAgentPairs, constraints, heuristics, paths, map.nAgents, nthreads);
+    else
+        grabWDGSerialConflictingPairs(mdds, weights, map, conflictingAgentPairs, constraints, heuristics, paths, map.nAgents);
+
+    conflictingAgentPairs.erase(
+            std::remove_if(conflictingAgentPairs.begin(), conflictingAgentPairs.end(),
+                        [](const std::pair<int, int>& p) {
+                            return p.first == 0 && p.second == 0;
+                        }),
+            conflictingAgentPairs.end());
+    
+    weights.erase(std::remove(weights.begin(), weights.end(), -1), weights.end());
+}
