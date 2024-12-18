@@ -700,7 +700,7 @@ bool detectDependency(const MDD &mdd1, const MDD &mdd2)
     return jointMDD[minLevels - 1].empty();
 }
 
-int computeConflictWeight(const Map &map, const std::vector<Constraint> &constraints,
+int getConflictWeight(const Map &map, const std::vector<Constraint> &constraints,
                           const std::vector<AStarPath> &paths, int agent1, int agent2,
                           const std::vector<HeuristicTable> &heuristics)
 {
@@ -825,14 +825,14 @@ int computeWDGHeuristic(const Map &map, const std::vector<Constraint> &constrain
             {
                 // Same check as DG, but we need to get weights
                 // Weight should be sum of increase in paths
-                int weight = computeConflictWeight(map, constraints, paths, i, j, heuristics);
+                int weight = getConflictWeight(map, constraints, paths, i, j, heuristics);
                 conflictingAgentPairs.emplace_back(i, j);
                 weights.push_back(weight);
             }
             else if (detectDependency(mdds[i], mdds[j]))
             { 
                 // check  seperatey as to not call depenfency as often
-                int weight = computeConflictWeight(map, constraints, paths, i, j, heuristics);
+                int weight = getConflictWeight(map, constraints, paths, i, j, heuristics);
                 conflictingAgentPairs.emplace_back(i, j);
                 weights.push_back(weight);
             }
@@ -847,13 +847,6 @@ int computeWDGHeuristic(const Map &map, const std::vector<Constraint> &constrain
 std::vector<AStarPath> findSolution(
     Map map, HeuristicType type, std::string experimentName,
     bool parallel, uint nthreads) {
-    std::vector<HeuristicTable> heuristics;
-    // PARALLELIZE HERE
-    for (int a = 0; a < map.nAgents; a++)
-    {
-        heuristics.push_back(computeAstarHeuristics(map.agents[a].goal, map));
-    }
-    /////////////
 
     auto start = std::chrono::high_resolution_clock::now();
 

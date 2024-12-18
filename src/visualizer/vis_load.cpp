@@ -79,7 +79,7 @@ int main() {
     HeuristicType type = WDG;
 
     Map map = {};
-    map.loadFromFile("instances/test_50.txt");
+    map.loadFromFile("instances/test_49.txt");
 
     map.printTiles();
 
