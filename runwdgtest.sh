@@ -20,7 +20,7 @@ run_tests() {
 		fi
 
         # Command to execute
-        command="bin/dg_test $map $mode $thread"
+        command="bin/wdg_test $map $mode $thread"
         echo "Running: $command"
 
 		stdbuf -oL $command | (
