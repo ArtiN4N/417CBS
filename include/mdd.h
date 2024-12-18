@@ -57,3 +57,8 @@ void grabAllDGConflictingPairs(
 );
 
 bool detectDependency(const MDD &mdd1, const MDD &mdd2);
+
+void grabAllWDGConflictingPairs(
+    std::vector<MDD> &mdds, std::vector<int>& weights, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, bool parallel, uint nthreads,
+    std::vector<Constraint> &constraints, std::vector<HeuristicTable> heuristics, std::vector<AStarPath> &paths
+);

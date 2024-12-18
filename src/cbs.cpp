@@ -672,28 +672,6 @@ int computeCGHeuristic(Map &map, std::vector<Constraint> &constraints, std::vect
 }
 
 
-int getConflictWeight(const Map &map, const std::vector<Constraint> &constraints,
-                          const std::vector<AStarPath> &paths, int agent1, int agent2,
-                          const std::vector<HeuristicTable> &heuristics)
-{
-    // Find original costs
-    int cost1 = getSumOfCost({paths[agent1]});
-    int cost2 = getSumOfCost({paths[agent2]});
-
-    // Add constraints to resolve conflict
-    std::vector<Constraint> tempConstraints = constraints;
-
-    // Recalculate path without heuristics
-    AStarPath oldPath1 = aStar(map, map.starts[agent1], map.goals[agent1], heuristics[agent1], agent1, {});
-    AStarPath oldPath2 = aStar(map, map.starts[agent2], map.goals[agent2], heuristics[agent2], agent2, {});
-
-    // Compute the delta cost
-    int oldCost1 = getSumOfCost({oldPath1});
-    int oldCost2 = getSumOfCost({oldPath2});
-
-    return (cost1 + cost2) - (oldCost1 + oldCost2);
-}
-
 int computeDGHeuristic(Map &map, std::vector<Constraint> &constraints, std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
 {
     std::vector<std::pair<int, int>> conflictingAgentPairs;
@@ -758,48 +736,21 @@ int minimumWeightedVertexCover(std::vector<std::pair<int, int>> &edges,
     return totalCost;
 }
 
-int computeWDGHeuristic(const Map &map, const std::vector<Constraint> &constraints, const std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
+int computeWDGHeuristic(Map &map, std::vector<Constraint> &constraints, std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
 {
     std::vector<std::pair<int, int>> conflictingAgentPairs;
     std::vector<int> weights;
     std::vector<MDD> mdds(map.nAgents);
 
     // Create MDDs for all agents
-    for (int i = 0; i < map.nAgents; i++)
-    {
-        AStarPath pathi = paths[i];
-        mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
-    }
+    createAllMDDs(mdds, paths, constraints, map, heuristics, PARALLELIZE, NTHREADS);
 
-    for (size_t i = 0; i < map.nAgents; i++)
-    {
-        for (size_t j = i + 1; j < map.nAgents; j++)
-        {
-            if (detectCardinalConflict(mdds[i], mdds[j]))
-            {
-                // Same check as DG, but we need to get weights
-                // Weight should be sum of increase in paths
-                int weight = getConflictWeight(map, constraints, paths, i, j, heuristics);
-                // weight must be >= 1
-                if(weight < 1){
-                    weight = 1;
-                }
-                conflictingAgentPairs.emplace_back(i, j);
-                weights.push_back(weight);
-            }
-            else if (detectDependency(mdds[i], mdds[j]))
-            { 
-                // check  seperatey as to not call depenfency as often
-                int weight = getConflictWeight(map, constraints, paths, i, j, heuristics);
-                // weight must be >= 1
-                if(weight < 1){
-                    weight = 1;
-                }
-                conflictingAgentPairs.emplace_back(i, j);
-                weights.push_back(weight);
-            }
-        }
-    }
+
+    grabAllWDGConflictingPairs(
+        mdds, weights, map, conflictingAgentPairs, PARALLELIZE, NTHREADS,
+        constraints, heuristics, paths
+    );
+
     int ret = minimumWeightedVertexCover(conflictingAgentPairs, weights, map.nAgents);
     return ret;
 }
