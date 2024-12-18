@@ -17,6 +17,8 @@ bin/vis_test
 ```
 The visualizer is set to load map 49. If you really care, you can go into the file and change which map file it loads.
 
+Keep in mind the visualizer is for debugging purposes. Without particular dev libraries installed, it will not run correctly, as it relies on the raylib library.
+
 ## Data
 All data is using maps from https://movingai.com/benchmarks/mapf/index.html
 
