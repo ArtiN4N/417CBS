@@ -204,7 +204,7 @@ std::pair<bool, Collision> detectCollision(AStarPath path1, AStarPath path2, uin
 
 void computeCollisionForPaths(int start, int end, std::vector<AStarPath> paths, std::vector<Collision>& ret) {
     int n = paths.size();
-    for (int k = 0; k < n * n; k++) {
+    for (int k = start; k < end; k++) {
         int i = k / n;
         int j = k % n;
 
@@ -222,8 +222,7 @@ void detectParallelCollisions(std::vector<AStarPath> paths, std::vector<Collisio
     std::vector<std::thread> threads;
 
     int n = paths.size();
-    int total = n * (n - 1) / 2;
-
+    int total = n * n;
     int perThread = std::ceil((float) total / (float) nthreads);
 
     for (int t = 0; t < nthreads; t++) {
