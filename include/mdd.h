@@ -35,3 +35,15 @@ public:
 
     ~MDD();
 };
+
+bool detectCardinalConflict(const MDD &mdd1, const MDD &mdd2);
+
+void createAllMDDs(
+	std::vector<MDD>& mdds, std::vector<AStarPath> &paths,
+	std::vector<Constraint> &constraints, Map &map, std::vector<HeuristicTable> heuristics,
+	bool parallel, uint nthreads
+);
+
+void grabAllConflictingPairs(
+	std::vector<MDD>& mdds, Map& map, std::vector<std::pair<int, int>>& conflictingAgentPairs, bool parallel, uint nthreads
+);

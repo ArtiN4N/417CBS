@@ -27,6 +27,10 @@ struct Collision
     uint timeStep;
 
     bool isGoalWall;
+
+    bool operator==(const Collision& other) const {
+        return agentId == other.agentId && agentId2 == other.agentId2 && timeStep == other.timeStep && isGoalWall == other.isGoalWall && location == other.location;
+    }
 };
 
 struct Constraint
@@ -61,7 +65,7 @@ struct AStarNode
 
     uint timeStep;
 };
-
+/*
 HeuristicTable computeAstarHeuristics(AStarLocation goal, Map map);
 
 ConstraintTable buildConstraintTable(std::vector<Constraint> constraints, uint agent, GoalWallTable goalWalls);
@@ -78,7 +82,7 @@ AStarPath getPath(AStarNode *goalNode);
 
 std::pair<bool, Collision> detectCollision(AStarPath path1, AStarPath path2, uint id1, uint id2);
 
-std::vector<Collision> detectCollisions(std::vector<AStarPath> paths);
+std::vector<Collision> detectCollisions(std::vector<AStarPath> paths, bool parallel, uint nthreads);
 
 std::pair<Constraint, Constraint> standardSplitting(Collision c);
 
@@ -96,3 +100,4 @@ void printCollisionLocation(CollisionLocation l);
 void printConstraint(Constraint c);
 
 void printResults(std::vector<AStarPath> paths, uint nExpanded, uint nGenerated, double elapsed, std::string filename);
+*/

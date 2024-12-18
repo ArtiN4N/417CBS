@@ -18,6 +18,8 @@ CGL_EXE = -o bin/cgl_test
 
 DG_SRC = src/dg/dg_load.cpp
 DG_EXE = -o bin/dg_test
+DGL_SRC = src/dg/dg_test_load.cpp
+DGL_EXE = -o bin/dgl_test
 
 WDG_SRC = src/wdg/wdg_load.cpp
 WDG_EXE = -o bin/wdg_test
@@ -26,11 +28,14 @@ WDG_EXE = -o bin/wdg_test
 cg_test:
 	$(CC) $(CG_SRC) $(SRC) $(CG_EXE) $(FLAG) $(INC)
 
-cg_test_l:
+cgl_test:
 	$(CC) $(CGL_SRC) $(SRC) $(CGL_EXE) $(FLAG) $(INC)
 
 dg_test:
 	$(CC) $(DG_SRC) $(SRC) $(DG_EXE) $(FLAG) $(INC)
+
+dgl_test:
+	$(CC) $(DGL_SRC) $(SRC) $(DGL_EXE) $(FLAG) $(INC)
 
 wdg_test:
 	$(CC) $(WDG_SRC) $(SRC) $(WDG_EXE) $(FLAG) $(INC)
