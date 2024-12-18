@@ -3,6 +3,9 @@
 #include <unordered_set>
 #include <unordered_map>
 
+#include <thread>
+#include <cmath>
+
 // Hash function for std::pair to use in unordered_map
 struct pair_hash
 {
@@ -178,6 +181,43 @@ void MDD::printMDD() const
     }
 }
 
+bool detectDependency(const MDD &mdd1, const MDD &mdd2)
+{
+    // Check for empty MDDs
+    if (mdd1.locsAtTime.empty() || mdd2.locsAtTime.empty())
+        return false; // No dependency if any MDD is empty
+
+    int minLevels = std::min(mdd1.locsAtTime.size(), mdd2.locsAtTime.size());
+
+    std::vector<std::vector<std::pair<MDDNode *, MDDNode *>>> jointMDD(minLevels);
+
+    // Add the roots
+    jointMDD[0].emplace_back(mdd1.locsAtTime[0].front(), mdd2.locsAtTime[0].front());
+
+    // Traverse levels of the MDDs
+    for (int level = 1; level < minLevels; level++)
+    {
+        for (const auto &pair : jointMDD[level - 1])
+        {
+            MDDNode *parent1 = pair.first;
+            MDDNode *parent2 = pair.second;
+
+            // Explore all child combinations of the current pair
+            for (MDDNode *child1 : parent1->childs)
+            {
+                for (MDDNode *child2 : parent2->childs)
+                {
+                    if (child1->location != child2->location)
+                    {
+                        jointMDD[level].emplace_back(child1, child2);
+                    }
+                }
+            }
+        }
+    }
+    return jointMDD[minLevels - 1].empty();
+}
+
 bool detectCardinalConflict(const MDD &mdd1, const MDD &mdd2)
 {
     int levels = std::min(mdd1.locsAtTime.size(), mdd2.locsAtTime.size());
@@ -245,15 +285,36 @@ void createSerialMDDs(
     }
 }
 
+void computeParMDDs(
+    int start, int end, std::vector<MDD> &mdds, std::vector<AStarPath> &paths,
+    std::vector<Constraint> &constraints, Map &map, std::vector<HeuristicTable> heuristics
+) {
+    for (int i = start; i < end; i++)
+    {
+        AStarPath pathi = paths[i];
+        mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
+    }
+}
+
 void createParallelMDDs(
     std::vector<MDD> &mdds, std::vector<AStarPath> &paths,
     std::vector<Constraint> &constraints, Map &map, std::vector<HeuristicTable> heuristics,
     uint nAgents, uint nthreads)
 {
-    for (int i = 0; i < nAgents; i++)
-    {
-        AStarPath pathi = paths[i];
-        mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
+    std::vector<std::thread> threads;
+
+    int agentsPerThread = std::ceil((float) nAgents / (float) nthreads);
+
+    heuristics.resize(nAgents);
+
+    for (int t = 0; t < nthreads; t++) {
+        int start = t * agentsPerThread;
+        int end = std::min((t + 1) * agentsPerThread, (int) nAgents);
+        threads.push_back(std::thread(computeParMDDs, start, end, std::ref(mdds), std::ref(paths), std::ref(constraints), std::ref(map), std::ref(heuristics)));
+    }
+
+    for (auto& t : threads) {
+        t.join();
     }
 }
 
@@ -271,34 +332,155 @@ void createAllMDDs(
 void grabSerialConflictingPairs(
     std::vector<MDD> &mdds, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, uint nAgents)
 {
-    for (size_t i = 0; i < nAgents; i++)
-    {
-        for (size_t j = i + 1; j < nAgents; j++)
-        {
-            if (detectCardinalConflict(mdds[i], mdds[j]))
-                conflictingAgentPairs.emplace_back(i, j);
-        }
+    int total = nAgents * nAgents;
+    int n = total;
+    for (int k = 0; k < total; k++) {
+        int i = k / n;
+        int j = k % n;
+
+        if (i == j || j < i || i >= nAgents || j >= nAgents)
+            continue;
+        
+        if (detectCardinalConflict(mdds[i], mdds[j]))
+            conflictingAgentPairs[k] = std::make_pair(i, j);
     }
 }
+
+void computeConflictingPairs(int start, int end, std::vector<MDD> &mdds, std::vector<std::pair<int, int>> &conflictingAgentPairs, int nAgents) {
+    int n = nAgents * nAgents;
+    for (int k = start; k < end; k++) {
+        int i = k / n;
+        int j = k % n;
+
+        if (i == j || j < i || i >= nAgents || j >= nAgents)
+            continue;
+
+        if (detectCardinalConflict(mdds[i], mdds[j]))
+            conflictingAgentPairs[k] = std::make_pair(i, j);
+    }
+}
+
 
 void grabParallelConflictingPairs(
     std::vector<MDD> &mdds, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, uint nAgents, uint nthreads)
 {
-    for (size_t i = 0; i < nAgents; i++)
-    {
-        for (size_t j = i + 1; j < nAgents; j++)
-        {
-            if (detectCardinalConflict(mdds[i], mdds[j]))
-                conflictingAgentPairs.emplace_back(i, j);
-        }
+    std::vector<std::thread> threads;
+
+    int n = nAgents;
+    int total = n * n;
+    int perThread = std::ceil((float) total / (float) nthreads);
+
+    for (int t = 0; t < nthreads; t++) {
+        int start = t * perThread;
+        int end = std::min((t + 1) * perThread, (int) total);
+        threads.push_back(std::thread(computeConflictingPairs, start, end, std::ref(mdds), std::ref(conflictingAgentPairs), nAgents));
+    }
+
+    for (auto& t : threads) {
+        t.join();
     }
 }
+
 
 void grabAllConflictingPairs(
     std::vector<MDD> &mdds, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, bool parallel, uint nthreads)
 {
+    int n = map.nAgents;
+    int total = n * n;
+    conflictingAgentPairs.resize(total);
+
     if (parallel)
         grabParallelConflictingPairs(mdds, map, conflictingAgentPairs, map.nAgents, nthreads);
     else
         grabSerialConflictingPairs(mdds, map, conflictingAgentPairs, map.nAgents);
+
+    conflictingAgentPairs.erase(
+            std::remove_if(conflictingAgentPairs.begin(), conflictingAgentPairs.end(),
+                        [](const std::pair<int, int>& p) {
+                            return p.first == 0 && p.second == 0;
+                        }),
+            conflictingAgentPairs.end());
+}
+
+
+void grabDGSerialConflictingPairs(
+    std::vector<MDD> &mdds, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, uint nAgents)
+{
+
+    int total = nAgents * nAgents;
+    int n = total;
+    for (int k = 0; k < total; k++) {
+        int i = k / n;
+        int j = k % n;
+
+        if (i == j || j < i || i >= nAgents || j >= nAgents)
+            continue;
+
+        if (detectCardinalConflict(mdds[i], mdds[j]))
+            conflictingAgentPairs[k] = std::make_pair(i, j);
+        else if (detectDependency(mdds[i], mdds[j]))
+        { // explicitly check for dependency
+            conflictingAgentPairs[k] = std::make_pair(i, j);
+        }
+    }
+}
+
+void computeDGConflictingPairs(int start, int end, std::vector<MDD> &mdds, std::vector<std::pair<int, int>> &conflictingAgentPairs, int nAgents) {
+    int n = nAgents * nAgents;
+    for (int k = start; k < end; k++) {
+        int i = k / n;
+        int j = k % n;
+
+        if (i == j || j < i || i >= nAgents || j >= nAgents)
+            continue;
+
+        if (detectCardinalConflict(mdds[i], mdds[j]))
+            conflictingAgentPairs[k] = std::make_pair(i, j);
+        else if (detectDependency(mdds[i], mdds[j]))
+        { // explicitly check for dependency
+            conflictingAgentPairs[k] = std::make_pair(i, j);
+        }
+    }
+}
+
+
+void grabDGParallelConflictingPairs(
+    std::vector<MDD> &mdds, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, uint nAgents, uint nthreads)
+{
+    std::vector<std::thread> threads;
+
+    int n = nAgents;
+    int total = n * n;
+    int perThread = std::ceil((float) total / (float) nthreads);
+
+    for (int t = 0; t < nthreads; t++) {
+        int start = t * perThread;
+        int end = std::min((t + 1) * perThread, (int) total);
+        threads.push_back(std::thread(computeDGConflictingPairs, start, end, std::ref(mdds), std::ref(conflictingAgentPairs), nAgents));
+    }
+
+    for (auto& t : threads) {
+        t.join();
+    }
+}
+
+
+void grabAllDGConflictingPairs(
+    std::vector<MDD> &mdds, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, bool parallel, uint nthreads)
+{
+    int n = map.nAgents;
+    int total = n * n;
+    conflictingAgentPairs.resize(total);
+
+    if (parallel)
+        grabDGParallelConflictingPairs(mdds, map, conflictingAgentPairs, map.nAgents, nthreads);
+    else
+        grabDGSerialConflictingPairs(mdds, map, conflictingAgentPairs, map.nAgents);
+
+    conflictingAgentPairs.erase(
+            std::remove_if(conflictingAgentPairs.begin(), conflictingAgentPairs.end(),
+                        [](const std::pair<int, int>& p) {
+                            return p.first == 0 && p.second == 0;
+                        }),
+            conflictingAgentPairs.end());
 }

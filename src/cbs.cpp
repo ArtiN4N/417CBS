@@ -447,13 +447,17 @@ void computeSerialAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map m
         heuristics.push_back(computeAstarHeuristics(map.agents[a].goal, map));
 }
 
-void computeHeuristicForAgent(int start, int end, std::vector<HeuristicTable>& heuristics, Map& map) {
+void computeHeuristicForAgent(
+    int start, int end, std::vector<HeuristicTable>& heuristics, Map& map
+) {
     for (int a = start; a < end; a++) {
         heuristics[a] = computeAstarHeuristics(map.agents[a].goal, map);
     }
 }
 
-void computeParallelAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map map, uint nAgents, uint nthreads) {
+void computeParallelAStarHeuristics(
+    std::vector<HeuristicTable>& heuristics, Map map, uint nAgents, uint nthreads
+) {
     std::vector<std::thread> threads;
 
     int agentsPerThread = std::ceil((float) nAgents / (float) nthreads);
@@ -463,7 +467,12 @@ void computeParallelAStarHeuristics(std::vector<HeuristicTable>& heuristics, Map
     for (int t = 0; t < nthreads; t++) {
         int start = t * agentsPerThread;
         int end = std::min((t + 1) * agentsPerThread, (int) nAgents);
-        threads.push_back(std::thread(computeHeuristicForAgent, start, end, std::ref(heuristics), std::ref(map)));
+        threads.push_back(
+            std::thread(
+                computeHeuristicForAgent, start, end,
+                std::ref(heuristics), std::ref(map)
+            )
+        );
     }
 
     for (auto& t : threads) {
@@ -662,42 +671,6 @@ int computeCGHeuristic(Map &map, std::vector<Constraint> &constraints, std::vect
     return minimumVertexCover(conflictingAgentPairs);
 }
 
-bool detectDependency(const MDD &mdd1, const MDD &mdd2)
-{
-    // Check for empty MDDs
-    if (mdd1.locsAtTime.empty() || mdd2.locsAtTime.empty())
-        return false; // No dependency if any MDD is empty
-
-    int minLevels = std::min(mdd1.locsAtTime.size(), mdd2.locsAtTime.size());
-
-    std::vector<std::vector<std::pair<MDDNode *, MDDNode *>>> jointMDD(minLevels);
-
-    // Add the roots
-    jointMDD[0].emplace_back(mdd1.locsAtTime[0].front(), mdd2.locsAtTime[0].front());
-
-    // Traverse levels of the MDDs
-    for (int level = 1; level < minLevels; level++)
-    {
-        for (const auto &pair : jointMDD[level - 1])
-        {
-            MDDNode *parent1 = pair.first;
-            MDDNode *parent2 = pair.second;
-
-            // Explore all child combinations of the current pair
-            for (MDDNode *child1 : parent1->childs)
-            {
-                for (MDDNode *child2 : parent2->childs)
-                {
-                    if (child1->location != child2->location)
-                    {
-                        jointMDD[level].emplace_back(child1, child2);
-                    }
-                }
-            }
-        }
-    }
-    return jointMDD[minLevels - 1].empty();
-}
 
 int getConflictWeight(const Map &map, const std::vector<Constraint> &constraints,
                           const std::vector<AStarPath> &paths, int agent1, int agent2,
@@ -721,33 +694,15 @@ int getConflictWeight(const Map &map, const std::vector<Constraint> &constraints
     return (cost1 + cost2) - (oldCost1 + oldCost2);
 }
 
-
-int computeDGHeuristic(const Map &map, const std::vector<Constraint> &constraints, const std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
+int computeDGHeuristic(Map &map, std::vector<Constraint> &constraints, std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
 {
     std::vector<std::pair<int, int>> conflictingAgentPairs;
     std::vector<MDD> mdds(map.nAgents); // Pre-allocate memory for MDDs
 
-    // Create MDDs for all agents
-    for (int i = 0; i < map.nAgents; i++)
-    {
-        AStarPath pathi = paths[i];
-        mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
-    }
+    createAllMDDs(mdds, paths, constraints, map, heuristics, PARALLELIZE, NTHREADS);
 
-    for (size_t i = 0; i < map.nAgents; i++)
-    {
-        for (size_t j = i + 1; j < map.nAgents; j++)
-        {
-            if (detectCardinalConflict(mdds[i], mdds[j]))
-            { // if they have cardinal conflict they are dependent
-                conflictingAgentPairs.emplace_back(i, j);
-            }
-            else if (detectDependency(mdds[i], mdds[j]))
-            { // explicitly check for dependency
-                conflictingAgentPairs.emplace_back(i, j);
-            }
-        }
-    }
+    grabAllDGConflictingPairs(mdds, map, conflictingAgentPairs, PARALLELIZE, NTHREADS);
+
     return minimumVertexCover(conflictingAgentPairs);
 }
 
@@ -837,10 +792,8 @@ int computeWDGHeuristic(const Map &map, const std::vector<Constraint> &constrain
             }
         }
     }
-    std::cout << "Getting Vertex Cover \n";
     int ret = minimumWeightedVertexCover(conflictingAgentPairs, weights, map.nAgents);
     
-    std::cout << ret << " Max W Vertex Cover \n";
     return ret;
 }
 std::vector<AStarPath> findSolution(

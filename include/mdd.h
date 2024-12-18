@@ -30,7 +30,11 @@ class MDD
 public:
 	std::vector<std::list<MDDNode*>> locsAtTime;
 
-	bool createMDD(AStarLocation start, int time, uint agent, const std::vector<Constraint>& constraints, Map map, HeuristicTable hTable);
+	bool createMDD(
+		AStarLocation start, int time, uint agent,
+		const std::vector<Constraint>& constraints,
+		Map map, HeuristicTable hTable
+	);
     void printMDD() const;
 
     ~MDD();
@@ -47,3 +51,9 @@ void createAllMDDs(
 void grabAllConflictingPairs(
 	std::vector<MDD>& mdds, Map& map, std::vector<std::pair<int, int>>& conflictingAgentPairs, bool parallel, uint nthreads
 );
+
+void grabAllDGConflictingPairs(
+    std::vector<MDD> &mdds, Map &map, std::vector<std::pair<int, int>> &conflictingAgentPairs, bool parallel, uint nthreads
+);
+
+bool detectDependency(const MDD &mdd1, const MDD &mdd2);
