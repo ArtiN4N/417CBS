@@ -76,10 +76,10 @@ void stepTimestep(Map& map, std::vector<AStarPath> soln, uint timestep) {
 }
 
 int main() {
-    HeuristicType type = CG;
+    HeuristicType type = WDG;
 
     Map map = {};
-    map.loadFromFile("instances/test_50.txt");
+    map.loadFromFile("instances/test_49.txt");
 
     map.printTiles();
 

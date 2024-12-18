@@ -632,187 +632,21 @@ int minimumVertexCover(const std::vector<std::pair<int, int>> &edges)
     return bestCover.size();
 }
 
-/*
-int minimumWeightedVertexCover(std::vector<int>& HG, int nAgents) {
-    int ret = 0;
-    std::vector<bool> finished(nAgents, false);
-
-    for (int i = 0; i < nAgents; i++) {
-        if (finished[i]) continue;
-
-        std::queue<int> wvcq;
-        wvcq.push(i);
-        finished[i] = true;
-    }
-    return ret;
-}
-*/
-
-/*
-std::vector<AStarPath> aStarforHeurs(
-    Map map, AStarLocation startLoc, AStarLocation goalLoc,
-    HeuristicTable hTable, uint agent, std::vector<Constraint> constraints)
-{
-
-    struct CompareANode
-    {
-        bool operator()(const AStarNode *a, const AStarNode *b)
-        {
-            return a->gval + a->hval > b->gval + b->hval;
-        }
-    };
-
-    std::priority_queue<int, std::vector<AStarNode *>, CompareANode> openList;
-    std::unordered_map<std::pair<AStarLocation, uint>, AStarNode, PairHash> closedList;
-
-    GoalWallTable goalWalls;
-
-    uint hValue = hTable[startLoc];
-
-    ConstraintTable cTable = buildConstraintTable(constraints, agent, goalWalls);
-    uint maxTimestep = 0;
-
-    for (auto &pair : cTable)
-    {
-        uint timeStep = pair.first;
-        auto constraints = pair.second;
-
-        for (auto &constraint : constraints)
-        {
-            bool isVertex = !constraint.isEdgeCollision;
-            bool constraintAtGoal = constraint.l1 == goalLoc;
-            if (isVertex && constraintAtGoal)
-                if (timeStep > maxTimestep)
-                    maxTimestep = timeStep;
-        }
-    }
-
-    uint terminateTimestep = map.cols * map.rows;
-    if (goalWalls.size() > 0)
-    {
-        int max_value = std::max_element(
-                            goalWalls.begin(), goalWalls.end(),
-                            [](const auto &a, const auto &b)
-                            {
-                                return a.second < b.second;
-                            })
-                            ->second;
-        terminateTimestep += max_value + 1;
-    }
-
-    AStarNode root = {startLoc, 0, hValue, nullptr, 0};
-    closedList[std::make_pair(startLoc, 0)] = root;
-    AStarNode *nodePtr = &closedList[std::make_pair(startLoc, 0)];
-    openList.push(nodePtr);
-
-    std::vector<AStarPath> shortestPaths;
-    int shortestCost = INT_MAX;
-
-    //std::cout << "maxtimestep = " << maxTimestep << "\n";
-
-    while (openList.size() > 0)
-    {
-        AStarNode *curr = openList.top();
-        openList.pop();
-
-        AStarPath cpath = getPath(curr);
-        int cpathCost = cpath.size();
-        if (cpathCost > shortestCost) continue;
-        std::cout << "cheaper than shortest cost " << shortestCost << "\n";
-        //printAStarPath(cpath);
-
-        if (curr->location == goalLoc && curr->timeStep >= maxTimestep)
-        {
-            //std::cout << "found a new path\n";
 
 
-            // Determine the path cost (length of the path)
+// int minimumWeighedVertexCover(const std::vector<std::pair<int, int>> &edges, int nAgents) {
+//     int ret = 0;
+//     std::vector<bool> finished(nAgents, false);
 
+//     for (int i = 0; i < nAgents; i++) {
+//         if (finished[i]) continue;
 
-            if (cpathCost < shortestCost) {
-                shortestPaths.clear();
-                //std::cout << "found a new shortest path\n";
-            }
-
-            if (cpathCost <= shortestCost){
-                //std::cout << "found an equivalent shortest path\n";
-                shortestCost = cpathCost;//pathCost;
-                shortestPaths.push_back(cpath);
-                //std::cout << "shortest path cost is now " << shortestCost << "\n";
-
-                // for (const auto& path : shortestPaths) {
-                //     std::cout << "Path for " << agent << ": ";
-                //     for (const auto& loc : path) {
-                //         std::cout << "(" << loc.first << ", " << loc.second << ") ";
-                //     }
-                //     std::cout << std::endl;
-                // }
-            }
-            continue;
-        }
-
-        for (int i = 0; i < 5; i++)
-        {
-            // cast int to ordered enum
-            uint dir = i;
-
-            bool wrongNorth = dir == 0 && curr->location.second == 0;
-            bool wrongEast = dir == 1 && curr->location.first == map.cols - 1;
-            bool wrongSouth = dir == 2 && curr->location.second == map.rows - 1;
-            bool wrongWest = dir == 3 && curr->location.first == 0;
-
-            if (wrongNorth || wrongEast || wrongSouth || wrongWest)
-                continue;
-
-            AStarLocation childLoc;
-
-            if (i == 4)
-                childLoc = curr->location;
-            else
-                childLoc = move(curr->location, dir);
-
-            uint childTime = curr->timeStep + 1;
-
-            if (childTime > terminateTimestep)
-                continue;
-
-            if (isConstrained(curr->location, childLoc, childTime, cTable))
-                continue;
-
-            if (map.tiles[childLoc.first][childLoc.second])
-                continue;
-
-            if (goalWalls.find(childLoc) != goalWalls.end())
-                if (goalWalls[childLoc] <= childTime)
-                    continue;
-
-            AStarNode child = {
-                childLoc,
-                curr->gval + 1, hTable[childLoc],
-                curr,
-                childTime};
-
-            if (closedList.find(std::make_pair(childLoc, childTime)) != closedList.end() && false)
-            {
-                AStarNode existingNode = closedList[std::make_pair(childLoc, childTime)];
-                if (compareAStarNodes(child, existingNode))
-                {
-                    closedList[std::make_pair(childLoc, childTime)] = child;
-                    AStarNode *nodePtr = &closedList[std::make_pair(childLoc, childTime)];
-                    openList.push(nodePtr);
-                }
-            }
-            else
-            {
-                closedList[std::make_pair(childLoc, childTime)] = child;
-                AStarNode *nodePtr = &closedList[std::make_pair(childLoc, childTime)];
-                openList.push(nodePtr);
-            }
-        }
-    }
-
-    return shortestPaths;
-}*/
+//         std::queue<int> wvcq;
+//         wvcq.push(i);
+//         finished[i] = true;
+//     }
+//     return ret;
+// }
 
 int computeCGHeuristic(Map &map, std::vector<Constraint> &constraints, std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
 {
@@ -866,6 +700,29 @@ bool detectDependency(const MDD &mdd1, const MDD &mdd2)
     return jointMDD[minLevels - 1].empty();
 }
 
+int getConflictWeight(const Map &map, const std::vector<Constraint> &constraints,
+                          const std::vector<AStarPath> &paths, int agent1, int agent2,
+                          const std::vector<HeuristicTable> &heuristics)
+{
+    // Find original costs
+    int cost1 = getSumOfCost({paths[agent1]});
+    int cost2 = getSumOfCost({paths[agent2]});
+
+    // Add constraints to resolve conflict
+    std::vector<Constraint> tempConstraints = constraints;
+
+    // Recalculate path without heuristics
+    AStarPath oldPath1 = aStar(map, map.starts[agent1], map.goals[agent1], heuristics[agent1], agent1, {});
+    AStarPath oldPath2 = aStar(map, map.starts[agent2], map.goals[agent2], heuristics[agent2], agent2, {});
+
+    // Compute the delta cost
+    int oldCost1 = getSumOfCost({oldPath1});
+    int oldCost2 = getSumOfCost({oldPath2});
+
+    return (cost1 + cost2) - (oldCost1 + oldCost2);
+}
+
+
 int computeDGHeuristic(const Map &map, const std::vector<Constraint> &constraints, const std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
 {
     std::vector<std::pair<int, int>> conflictingAgentPairs;
@@ -895,10 +752,101 @@ int computeDGHeuristic(const Map &map, const std::vector<Constraint> &constraint
     return minimumVertexCover(conflictingAgentPairs);
 }
 
+int minimumWeightedVertexCover(std::vector<std::pair<int, int>> &edges, 
+                               const std::vector<int> &weights, int nAgents)
+{
+    std::vector<bool> finished(nAgents, false);
+    int totalCost = 0;
+
+    while (!edges.empty())
+    {
+        // Get max edge weight
+        int maxWeight = 0;
+        size_t heavyEdge = 0;
+
+        for (size_t i = 0; i < edges.size(); i++)
+        {
+            if (weights[i] > maxWeight)
+            {
+                maxWeight = weights[i];
+                heavyEdge = i;
+            }
+        }
+
+        // Pick one of the vertices in the edge and mark as finished
+        int u = edges[heavyEdge].first;
+        int v = edges[heavyEdge].second;
+
+        if (!finished[u])
+        {
+            finished[u] = true;
+            totalCost += maxWeight;
+        }
+        else if (!finished[v])
+        {
+            finished[v] = true;
+            totalCost += maxWeight;
+        }
+
+        // Remove all edges that intersect with u or v
+        for (size_t i = 0; i < edges.size();)
+        {
+            if (edges[i].first == u || edges[i].second == u || edges[i].first == v || edges[i].second == v)
+            {
+                edges.erase(edges.begin() + i);
+            }
+            else
+            {
+                i++;
+            }
+        }
+    }
+    return totalCost;
+}
+
+int computeWDGHeuristic(const Map &map, const std::vector<Constraint> &constraints, const std::vector<AStarPath> &paths, std::vector<HeuristicTable> heuristics)
+{
+    std::vector<std::pair<int, int>> conflictingAgentPairs;
+    std::vector<int> weights;
+    std::vector<MDD> mdds(map.nAgents);
+
+    // Create MDDs for all agents
+    for (int i = 0; i < map.nAgents; i++)
+    {
+        AStarPath pathi = paths[i];
+        mdds[i].createMDD(pathi[0], pathi.size(), i, constraints, map, heuristics[i]);
+    }
+
+    for (size_t i = 0; i < map.nAgents; i++)
+    {
+        for (size_t j = i + 1; j < map.nAgents; j++)
+        {
+            if (detectCardinalConflict(mdds[i], mdds[j]))
+            {
+                // Same check as DG, but we need to get weights
+                // Weight should be sum of increase in paths
+                int weight = getConflictWeight(map, constraints, paths, i, j, heuristics);
+                conflictingAgentPairs.emplace_back(i, j);
+                weights.push_back(weight);
+            }
+            else if (detectDependency(mdds[i], mdds[j]))
+            { 
+                // check  seperatey as to not call depenfency as often
+                int weight = getConflictWeight(map, constraints, paths, i, j, heuristics);
+                conflictingAgentPairs.emplace_back(i, j);
+                weights.push_back(weight);
+            }
+        }
+    }
+    std::cout << "Getting Vertex Cover \n";
+    int ret = minimumWeightedVertexCover(conflictingAgentPairs, weights, map.nAgents);
+    
+    std::cout << ret << " Max W Vertex Cover \n";
+    return ret;
+}
 std::vector<AStarPath> findSolution(
     Map map, HeuristicType type, std::string experimentName,
-    bool parallel, uint nthreads
-) {
+    bool parallel, uint nthreads) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -995,7 +943,7 @@ std::vector<AStarPath> findSolution(
                     break;
                     // std::cout << "Computed DG heuristic: " << qNode.heuristic << std::endl;
                 case WDG:
-                    qNode.heuristic = 0;
+                    qNode.heuristic = computeWDGHeuristic(map, qNode.constraints, qNode.paths, heuristics);
                     break;
                 }
 
