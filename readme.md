@@ -18,6 +18,9 @@ bin/vis_test
 The visualizer is set to load map 49. If you really care, you can go into the file and change which map file it loads.
 
 ## Data
+All data is using maps from https://movingai.com/benchmarks/mapf/index.html
+
+
 All compiled data can be found in the archive, in autotest/tests
 
 Data is formatted like so:
@@ -43,7 +46,13 @@ run:
 bin/<modifier>_test <map #> <parallel? (0 or 1)> <threadcount>
 ```
 
-This will generate the test files, formatted as described earlier, for the inputted map number, and threadcount. Use a 0 for parallel input if testing for serial, and 1 for testing parallel
+This will generate the test files, formatted as described earlier, for the inputted map number, and threadcount. Use a 0 for parallel input if testing for serial, and 1 for testing parallel.
+
+For example, to run tests for map 1, cg heuristic, serial version, run:
+```
+make cg_test
+bin/cg_test 1 0 1
+```
 
 
 ## Questions
